@@ -1,0 +1,37 @@
+12 msgs/sec, 9/62 retries, message size 104
+41 msgs/sec, 9/271 retries, message size 104
+44 msgs/sec, 9/491 retries, message size 104
+42 msgs/sec, 9/704 retries, message size 104
+42 msgs/sec, 9/914 retries, message size 104
+42 msgs/sec, 9/1126 retries, message size 104
+42 msgs/sec, 9/1336 retries, message size 104
+43 msgs/sec, 9/1551 retries, message size 104
+42 msgs/sec, 9/1763 retries, message size 104
+d[0]=0 d[1]=1 d[2]=0 d[3]=1762 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+43 msgs/sec, 9/1980 retries, message size 104
+41 msgs/sec, 9/2189 retries, message size 104
+42 msgs/sec, 9/2399 retries, message size 104
+43 msgs/sec, 9/2614 retries, message size 104
+23 msgs/sec, 9/2729 retries, message size 104
+BREAK
+d[0]=0 d[1]=1 d[2]=0 d[3]=2728 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+43 msgs/sec, 9/2944 retries, message size 40
+316 msgs/sec, 9/4524 retries, message size 40
+284 msgs/sec, 9/5944 retries, message size 40
+242 msgs/sec, 9/7157 retries, message size 40
+314 msgs/sec, 9/8729 retries, message size 40
+338 msgs/sec, 9/10421 retries, message size 40
+362 msgs/sec, 9/12233 retries, message size 40
+369 msgs/sec, 9/14081 retries, message size 40
+1204 msgs/sec, 9/20103 retries, message size 40
+7200 msgs/sec, 21/56103 retries, message size 40
+d[0]=0 d[1]=52103 d[2]=19 d[3]=3982 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 12960 msgs/sec, 25/120902 retries, message size 40
+10634 msgs/sec, 25/174070 retries, message size 10410708 msgs/sec, 37/227614 retries, message size 409202 msgs/sec, 60/273628 retries, message size 104
+9214 msgs/sec, 60/319699 retries, message size 40
+13866 msgs/sec, 60/389027 retries, message size 40
+9540 msgs/sec, 62/436728 retries, message size 40
+9256 msgs/sec, 62/483009 retries, message size 40
+9205 msgs/sec, 62/574763 retries, message size 40
+d[0]=0 d[1]=570743 d[2]=26 d[3]=4001 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 9220 msgs/sec, 75/620867 retries, message size 409209 msgs/sec, 151/666914 retries, message size 40
+9159 msgs/sec, 582/758515 retries, message size 40
+9151 msgs/sec, 1228/850074 retries, message size 40

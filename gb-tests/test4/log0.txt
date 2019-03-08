@@ -1,0 +1,140 @@
+[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 0...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 1...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 2...
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m0 msgs/sec, 0/0 retries, message size 0
+d[0]=0 d[1]=0 d[2]=0 d[3]=0 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+14 msgs/sec, 0/73 retries, message size 104
+50 msgs/sec, 0/326 retries, message size 104
+49 msgs/sec, 0/572 retries, message size 104
+49 msgs/sec, 0/820 retries, message size 104
+49 msgs/sec, 0/1065 retries, message size 104
+49 msgs/sec, 0/1312 retries, message size 104
+50 msgs/sec, 0/1562 retries, message size 104
+48 msgs/sec, 0/1804 retries, message size 104
+51 msgs/sec, 0/2061 retries, message size 104
+48 msgs/sec, 0/2304 retries, message size 104
+d[0]=0 d[1]=1 d[2]=0 d[3]=2303 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+49 msgs/sec, 0/2553 retries, message size 104
+48 msgs/sec, 0/2794 retries, message size 104
+49 msgs/sec, 0/3042 retries, message size 104
+30 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+d[0]=0 d[1]=1 d[2]=0 d[3]=3193 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+0 msgs/sec, 0/3194 retries, message size 104
+24 msgs/sec, 0/3315 retries, message size 40
+82 msgs/sec, 0/3728 retries, message size 104
+76 msgs/sec, 0/4110 retries, message size 40
+75 msgs/sec, 0/4488 retries, message size 40
+76 msgs/sec, 0/4868 retries, message size 40
+d[0]=0 d[1]=879 d[2]=0 d[3]=3989 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+73 msgs/sec, 0/5234 retries, message size 40
+76 msgs/sec, 0/5614 retries, message size 104
+76 msgs/sec, 0/5997 retries, message size 104
+72 msgs/sec, 0/6357 retries, message size 104
+77 msgs/sec, 0/6744 retries, message size 40
+72 msgs/sec, 0/7105 retries, message size 40
+75 msgs/sec, 0/7481 retries, message size 104
+73 msgs/sec, 0/7846 retries, message size 104
+74 msgs/sec, 0/8217 retries, message size 104
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'FIND': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'FIND': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+672 msgs/sec, 2/11580 retries, message size 104
+d[0]=0 d[1]=5756 d[2]=0 d[3]=5824 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+1333 msgs/sec, 2/18249 retries, message size 40
+1270 msgs/sec, 2/24600 retries, message size 104
+1265 msgs/sec, 2/30928 retries, message size 40
+1331 msgs/sec, 2/37583 retries, message size 104
+1192 msgs/sec, 2/43547 retries, message size 104
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'INSERT': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 2[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'INSERT': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 2[0m
+1244 msgs/sec, 4/49769 retries, message size 40
+1235 msgs/sec, 4/55944 retries, message size 104
+1306 msgs/sec, 4/62476 retries, message size 40
+1277 msgs/sec, 4/68863 retries, message size 40
+1339 msgs/sec, 4/75559 retries, message size 104
+d[0]=0 d[1]=69726 d[2]=0 d[3]=5833 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+1311 msgs/sec, 4/82114 retries, message size 104
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'INSERT': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'FIND': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 1[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 0[0m
+770 msgs/sec, 6/85964 retries, message size 104
+802 msgs/sec, 6/89977 retries, message size 104
+721 msgs/sec, 6/93583 retries, message size 40
+665 msgs/sec, 6/96911 retries, message size 104
+884 msgs/sec, 6/101335 retries, message size 104
+826 msgs/sec, 6/105469 retries, message size 104
+829 msgs/sec, 6/109616 retries, message size 40
+829 msgs/sec, 6/113765 retries, message size 40
+824 msgs/sec, 6/117889 retries, message size 40
+d[0]=0 d[1]=111703 d[2]=22 d[3]=6169 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+746 msgs/sec, 6/121623 retries, message size 104
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'INSERT': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:122:ondeliver(): OP 'FIND': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:127:ondeliver(): ...expected destination = 2[0m
+695 msgs/sec, 8/125102 retries, message size 40
+692 msgs/sec, 8/128562 retries, message size 40
+724 msgs/sec, 8/132185 retries, message size 104
+722 msgs/sec, 8/135797 retries, message size 40
+713 msgs/sec, 8/139366 retries, message size 40
+685 msgs/sec, 8/142792 retries, message size 104
+805 msgs/sec, 8/146821 retries, message size 104
+875 msgs/sec, 8/151198 retries, message size 104
+864 msgs/sec, 8/155518 retries, message size 104
+d[0]=0 d[1]=148907 d[2]=47 d[3]=6569 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+775 msgs/sec, 8/159394 retries, message size 40
+707 msgs/sec, 8/162932 retries, message size 104
+738 msgs/sec, 8/166622 retries, message size 104
+757 msgs/sec, 8/170409 retries, message size 104

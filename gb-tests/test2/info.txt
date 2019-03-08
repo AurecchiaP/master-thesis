@@ -1,0 +1,17 @@
+test of ideally max perf, no data contention
+3 groups test:
+./test-setup.sh run 3 3 10
+./gbtree-replica -r 0 -g 0 -c mcast-2g3p.conf -t graph.txt 2>&1 | tee log0.txt
+./gbtree-replica -r 1 -g 1 -c mcast-2g3p.conf -t graph.txt 2>&1 | tee log1.txt
+./gbtree-replica -r 2 -g 2 -c mcast-2g3p.conf -t graph.txt 2>&1 | tee log2.txt
+
+1 minute:
+./gbtree-client -i 192.168.3.15 -z 0 -r 100 -n 10 -f 1 -t 333333
+./gbtree-client -i 192.168.3.15 -z 0 -r 100 -n 10 -f 333334 -t 666666
+./gbtree-client -i 192.168.3.18 -z 0 -r 100 -n 10 -f 666667 -t 1000000
+
+repartition after 30s, then after 1 minute
+
+./gbtree-client -i 192.168.3.15 -z 0 -r 10 -n 10 -f 1 -t 333333
+./gbtree-client -i 192.168.3.15 -z 0 -r 10 -n 10 -f 333334 -t 666666
+./gbtree-client -i 192.168.3.18 -z 0 -r 10 -n 10 -f 666667 -t 1000000
