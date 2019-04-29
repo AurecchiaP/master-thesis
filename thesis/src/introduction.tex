@@ -1,0 +1,223 @@
+\chapter{Introduction}\label{sec:introduction}
+
+In recent years, tools for program verification have made significant progress
+and are becoming more widely used. The verification environments built around
+them provide features that help the user in writing valid specifications easily
+and, more importantly, they provide a way to work with the verifier in an
+interactive fashion. Yet, these tools still lack effective facilities to allow
+investigating and understanding verification errors, especially in the context
+of more advanced language features, such as quantified
+permissions\cite{iterated-separating-conjunctions}, in the case
+of the Viper language\citep{viper}.
+
+
+% In this chaser we motivate the why, we describe previous work that has
+% been done both on the Viper infrastructure and in research, trying to
+% solve related or similar problems. Finally, we describe the \emph{Core
+% Goals} and the \emph{Extension Goals} that we would like to achieve in
+% this project.
+
+% now we have a better understanding of what the underlying problems look
+% like. Should be more valuable to an external reader than the project
+% description.
+
+\section{Motivation}\label{sec:motivation}
+
+Determining the source of a verification error can still be tedious. The errors
+are found by the SMT solver\citep{smt}, that ``sits'' at the lowest layer of
+most automated verification toolchains, and they are specified with respect to
+the SMT encoding of the program being verified. This makes it generally
+difficult to relate these problems back to the higher level of abstraction that
+the user works at.  In addition to that, due to the inherent incompleteness of
+SMT solving, verification may fail for reasons other than the program being
+incorrect (e.g.\ for formulas involving quantifier or non-linear integer
+arithmetic), and the solvers may not be able to come up with models for more
+complex problems.
+
+The IDE built around the Viper framework \citep{viper} has been largely expanded
+as part of Ruben Kälin's thesis \citep{kaelin} and allows fast feedback on the
+state and result of the proof when working with the verifier. Moreover, the
+project provides an early prototype for a Symbolic Execution debugger, laying
+down a solid foundation to build a more advanced debugger on. This debugger is
+limited in that it does not support visualizing structures defined via
+quantified permissions and its abilities of providing counterexamples to
+a verification error are lacking, mainly because of only visualizing symbolic
+states and having to rely on the SMT solver to provide the model for building
+a counterexample.
+
+In the presence of advanced language features, this approach is not powerful
+enough to provide the user with effective visual representations of the problem,
+therefore we want to explore alternative ways of building counterexamples with
+the information provided by the symbolic execution engine, and without
+necessarily having to rely on models from the SMT solver.
+
+% Our main objectives with this project are to update the architecture of the
+% Viper IDE, so that a new debugger extension can be easily integrated with the
+% system, and to build a proof of concept for a debugger supporting quantified
+% permissions on top of this new infrastructure.
+
+
+\section{Previous Work}\label{sec:previous-work}
+
+The original debugger offered support for navigating through the various states
+of the symbolic execution performed by Silicon, as well as inspecting their
+internal information. In addition to that, its graphical representation of the
+symbolic state supported visualizing local variables, functions, predicates and
+objects on the heap. These features were intended to provide a visual
+counterexample to a verification error, in order to help the user identify where
+the problem with the specification might be.  This approach is limited by the
+fact that all the information about local variables or heap chunks is symbolic.
+For this reason, there is a limited amount of facts that can be learned directly
+about the values of local variables or whether, for example, references are
+aliases. The debugger tries to discover some of this information from explicit
+facts in the path conditions of the state being inspected.
+
+% The IDE has proven to be a very useful tool for quickly verifying
+% programs with the Viper framework and is used for a large part of the
+% Program Verification course.\footnote{\url{http://www.pm.inf.ethz.ch/education/courses/program-verification.html}}
+% In addition to that, the built-in debugger prototype provides a solid
+% foundation for building an advanced debugger for symbolic execution.
+
+% The Viper IDE provides two debugging modes: the \emph{simplified
+% debugging mode} and the \emph{advanced debugging mode}. The simplified
+% mode allows the user to explore a restricted set of verification paths
+% that lead to a verification failure (called \emph{reference states}) and
+% compare any of them with the error state. The advanced mode allows the
+% user to inspect and compare any pair of states, not only those that are
+% on the path to a verification failure. This second debugging mode is
+% aimed more at developers of the Silicon backend rather than users of the
+% verifier. In both debugging modes, the IDE displays markers on the
+% source code that denote verification states related to the currently
+% selected one (non-relevant ones are hidden). Clicking on these markers
+% changes the selection of states to display.
+
+% Working with recursive predicates can become cumbersome if the way data
+% is accessed does not follow the structure of the predicate, that
+% is why \emph{Quantified Permissions} were introduced to the Viper
+% framework \citep{quantified_permissions}. These enable the users to
+% avoid specifying many manual proof steps when working with structures
+% such as arrays, cyclic data structures or graphs. Despite their
+% usefulness, structures on the heap defined via the use of quantified
+% permissions cannot currently be visualized by the Viper debugger,
+% therefore adding support for them is one of the goals of this project
+% (see \protect\hyperlink{extensions}{Extensions}).
+
+% In his Master's Thesis, Ivo Colombo worked on building a debugger for
+% the Chalice language on top of the Syxc verifier. Despite the lack of
+% more advanced language features (such as quantified permissions) in
+% Chalice, Ivo's work provides some useful insights and guidelines on
+% building a debugger for a symbolic execution verifier (in fact, Ruben
+% Kälin's work is also based on some of these observations). The ideas
+% that are most relevant for us are those regarding the conceptual design
+% of a symbolic execution debugger \citep[ sec.~3]{colombo}
+
+The \emph{VeriFast Program Verifier} \citep{verifast} is a tool for the
+verification of C and Java programs annotated with preconditions and
+postconditions written in separation logic, and is implemented via symbolic
+execution, which make it, at least in principle, very similar to Silicon. The
+VeriFast IDE also provides debugging features similar to those provided by the
+original Viper Debugger: it allows navigating through the states explored by
+symbolic execution and displays the store, the heap, and the path conditions for
+each one of them, but does not provide a visual representation of this
+information.
+
+The \emph{Symbolic Execution Debugger (SED)} \citep{sed} is a platform for
+symbolic execution that allows debugging programs by exploring their symbolic
+execution tree interactively. In addition to that, SED also allows verifying
+programs (or parts of them) when JML\citep{jml} specifications are provided.
+The tool is implemented on top of the Eclipse IDE and uses KeY's Symbolic
+Execution Engine \citep{KeY}. The system allows visualizing information about
+the current symbolic state being executed, such as the symbolic stack and path
+conditions. In case of potential aliasing between local variables, SED allows
+displaying graphs of the memory layout and provides a slider to inspect all the
+possible aliasing configurations.
+
+\emph{Alloy} \citep{alloy_web, software-abstractions} is a language and an
+analyser for software modeling. It allows describing sets of structures via the
+use of constraints and then finding instances of these models, or
+counterexamples to assertions about facts in the model. The search space for
+these instances is limited to a \emph{scope} defined by the user. The tool
+displays these structures graphically as an interactive graph. It is possible to
+``go to the next instance'' so that all instances in the scope can be inspected
+manually. Moreover, Alloy performs symmetry-breaking to avoid showing multiple
+instances of the model that would essentially be equivalent. We are going to
+investigate whether Alloy can be used as the main tool to solve our problem of
+counterexample generation.
+
+
+\section{Main Objective}
+
+The overall objective we would like to achieve with this project is to find an
+effective way of visually representing dynamic structures defined via the use of
+quantified permissions. We will conduct a feasibility study in order to
+understand whether a bounded modeling approach can be employed to build these
+visualizations and to identify counterexamples when a verification error occurs.
+
+\subsection{Updating the existing infrastructure}\label{updating-the-existing-infrastructure}
+
+The current version of the Viper IDE only provides features for
+writing Viper code, not for debugging it. The code in other parts of the
+framework has evolved and the compatibility with the debugging features
+of the IDE has been broken.
+
+The first task of this project is to understand the requirements for the design of
+an infrastructure that would allow us to add debugging features to the IDE and
+then to actually put it in place. The architecture should allow extensibility
+and should not force other components of the system to depend on debugging
+features they do not need. The logging infrastructure of Silicon will also need
+to be updated in order to provide the debugger with all the information needed
+to visualise the verification states.
+
+\subsection{Visualization of Quantified Permissions}\label{visualization-of-quantified-permissions}
+
+In order to achieve our main objective, we will devise a technique that will allow
+us to encode the information about a symbolic execution state into an Alloy
+model. The model will then be used to generate instances of the symbolic state
+
+Our technique for modeling symbolic states will be integrated into a broader
+pipeline, that will allow solving some limitations of working with Alloy alone.
+In this thesis, though, we will only focus on the part of the pipeline
+that deals with modeling the program's state.
+
+One important distinction between the approach of the previous debugger and the
+approach we take with the new one is that, in this new project, we focus on
+providing concrete counterexamples, whereas the visualization provided by the
+original debugger only showed symbolic states, where the value of variables were
+not known. This means that we also always display visualizations where the
+aliasing relation between reference is known.
+
+Finally, we will conduct an evaluation to understand whether our technique is
+practically effective in visualizing counterexamples and whether it has
+fundamental limitations, both in terms of the approach and of its
+implementation.
+
+
+\section{The Structure of this Report}\label{the-structure-of-this-report}
+
+In this section, we give a short overview of the contents and the structure of
+this report.
+
+Chapter 1 introduced the main motivation behind the project, it briefly
+described related work that has been done in the field, and it outlined the
+goals we would like to ultimately achieve.
+
+In Chapter 2, we explain our approach to solving the problem of counterexample
+generation. We describe both the more general pipeline we envisioned and the
+subset that we focused on as part of this thesis.
+
+Chapter 3 presents the translation of Silicon terms that appear in the symbolic
+execution trace into Alloy, and describes the technique we use to encode the
+symbolic state into a model that can be used to generate counterexamples.
+
+In Chapter 4 we discuss the previous architecture of the system and how it was
+updated to enable integrating the new debugger extension. In chapter 5 we
+briefly describe the features offered by the debugger.
+
+In Chapter 6 we evaluate the models produced by the debugger by considering some
+concrete use cases and we discuss its limitations in terms of the technique and
+its implementation. Then, we compare our approach with that of other program
+verifiers based on symbolic execution that offer debugging features.
+
+Finally, in Chapter 7 we draw conclusions about the project and briefly list
+some potential interesting topics for future work.
+
