@@ -1,37 +1,36 @@
 \chapter{Background}\label{sec:Background}
-In this section we will go over
+In this section we will go over some of the fundamentals of distributed systems and algorithms that will help to better understand the later parts of this report.
+
+We will first give a brief introduction to the main challenges of working in distributed environments. Then we will discuss a fundamental problem of distributed systems known as Consensus, followed by the description of one of the most popular algorithms used to solve Consensus in distributed settings, called Paxos. Lastly we will introduce GeoPaxos, an improvement over Paxos which aims to provide better performance in geo-distributed environments.
 
 \section{Distributed Systems}\label{sec:Distributed Systems}
 
-Significant consequences of distributed systems, Concurrency, Absence of global clock, Failure independency
+Distributed systems can be encountered in a multitude of situations in our everyday lives, and their importance is growing every year: Entertainment services such as music and video streaming services, banks, hospitals, social medias, web engines are just a few of the many types of distributed systems that we use on a daily basis, and each of these may have different challenges and needs when it comes to handling distribution.
 
-Heterogeneity • Openness
-• Scalability
-• Transparency •Failure handling • Concurrency
-• Security
+Even a clear definition of a distributed system is hard to find. In general, we can describe it as a collection of indipendent machines that communicate and coordinate their work to provide a certain service to its users: to them, the system should appear as a single and homogeneous entity, hiding its distributed nature.
 
-importance of models
+Working with distributed environments has some inherent challenges, some more important than others depending on the specific system. Concurrency issues, for example when multiple users want to withdraw money from a bank account. Ordering and synchronization, because the different machines will most likely work with different clocks and their communication may take a noticeable amount of time. Failure resiliance, so that the system does not go down when one of its machines fails. These are only a few of the many problems that can and will be encountered when working with distributed systems.
 
-coordination problem
+To tackle these problems, The choice of the models used to represent them is fundamental: choosing a model too strong may make the problem easier to solve, but it may represent an unrealistic view of the problem at hand. On other hand, weaker models may make the problem impossible to solve without further assumptions. 
 
-Synchronous vs. asynchronous systems Asynchronous system
-– No assumptions about process execution speeds and/or message delivery delays
-– Weak assumption: any system is asynchronous
- Synchronous system
-– Relative process speeds and ...
-– ...Message delays are bounded
+A synchronous system is one where we know that the process speed and the time delay for the communication are bounded; this helps us simplify our view of the timing and communication side, but it will usually not be a realistic representation of the real world system.
 
-A communication example
-– Reliable channels
-If P sends a message m to Q and Q does not crash, then Q receives m.
-– Quasi-reliable channels
-If P sends a message m to Q and both P and Q do not crash, then Q receives m.
+On the other hand, an asynchronous system is one that  does not have bounds on process speed and time delay, which is a more general assumption which could greatly increase the difficulty of solving the problem.
 
-– Failstop: a process fails by halting. Once it halts, the process remains in that state. Other processes can detect the failed process.
-– Crash: a process fails by halting. Once it halts, the process remains in that state. A failure may or not be detected by other processes.
-– Byzantine failures: a process fails by exhibiting arbitrary behavior.
-Crash+Link: a link fails by losing some messages, but does not delay, duplicate, or corrupt messages.
-– Receive-omission: a process fails by receiving only a subset of the messages sent to it, or by halting (i.e., crashing).
+Similarly, for a model we could have reliable channels, where if a process sends a message and the receiver does not crash then the receiver will get the message, or quasi-reliable, where both sender and receiver must not crash for the receiver to get the message.
+
+It is also important to model the possible failure of the processes. 
+Some types of failure models can be:
+\begin{itemize}
+\item \textbf{Failstop} the process fails by halting execution, and it does not recover. Other processes will know about the failure of the process
+\item \textbf{Crash} the process fails by halting execution, and it does not recover. Furthermore, the other processes may not be able to identify its failure
+\item \textbf{Byzantine failures} the process fails by exhibiting arbitrary behavior, which could be unexpected replies or malicious actions
+% \item \textbf{Crash+Link} a link fails by losing some messages, but does not delay, duplicate, or corrupt messages.
+% \item \textbf{Receive-omission}: a process fails by receiving only a subset of the messages sent to it, or by halting (i.e., crashing).
+\end{itemize}
+
+Again, the choice of the failure model gives us different degrees of difficulty: a failstop model makes the problem easier to solve, but a system that is able to tolerate byzantine failures is going to be much more resiliant to failures.
+
 \section{Consensus}\label{sec:Consensus}
 
 The problem of consensus is a fundamental problem in distributed systems: it was first introduced in the early 80s \cite[]{Pease}, \cite[]{Lamport} and since then it remained important in most distributed environment, ranging from more classical server applications to the more recent Blockchains.
@@ -165,3 +164,31 @@ send (DECISION, v-val) to learners
   running the verification backends.}
 \label{fig:paxos}
 \end{figure}
+
+[should I add correctness, liveness, and so on?]
+
+Remember that this algorithm allows only for the decision of one value; once value is decided, another instance of Paxos has to be initiated. Hence, for realistic use cases one would use system that allow to run multiple instances of paxos in a row, such as MultiPaxos.
+
+The presented version of Paxos is the simplest one. Liveness in this case is not guaranteed; to ensure it, only the leader should be allowed to propose values, since otherwise it is possible that two proposers keep stealing their turn from each others without making any progress. Therefore the proposers should forward their values to the leader that will then try to propose them.
+
+Various other improvements can be performed: for example, the leader could start phase 1 before a value is proposed, which means that once a value is ready to be proposed we can start directly from phase 2, virtually removing the delay of phase 1.
+Also, at the end of Phase 2B the acceptors could send the decided value directly to the learners instead of having to first send it to the proposers; this allows to remove a whole message delay from the algorithm.
+
+[should I write best message delays?]
+
+\section{GeoPaxos}\label{sec:GeoPaxos}
+Many current online services must serve clients distributed across geographic areas. In order to improve service avail- ability and performance, servers are typically replicated and deployed over geographically distributed sites (i.e., datacen- ters). By replicating the servers, the service can be configured to tolerate the crash of nodes within a single datacenter and the disruption of an entire datacenter. Geographic replication can improve performance by placing the data close to the clients, which reduces service latency.
+
+Designing systems that coordinate geographically dis- tributed replicas is challenging. Some replicated systems resort to weak consistency to avoid the overhead of wide-area com- munication. Strong consistency provides more intuitive service behavior than weak consistency, at the cost of increased latency. Due to the importance of providing services that clients can intuitively understand, several approaches have been proposed to improve the performance of geo-distributed strongly consistent systems (e.g., [1], [2], [3], [4]). This paper presents GeoPaxos, a protocol that combines three insights to implement efficient state machine replication in geographically distributed environments.
+
+First, GeoPaxos decouples ordering from execution [5]. Although Paxos introduces different roles for the ordering and execution of operations (acceptors and learners, respec- tively [6]), Paxos-based systems typically combine the two roles in a replica (e.g., [1], [2], [7]). Coupling order and execution in a geographically distributed setting, however, leads to a performance dilemma. On the one hand, replicas must be deployed near clients to reduce latency (e.g., clients can quickly read from a nearby replica). On the other hand, distributing replicas across geographic areas to serve remote clients slows down ordering, since replicas must coordinate to order operations. By decoupling order from execution, GeoPaxos can quickly order operations using servers in dif- ferent datacenters within the same region [1] and deploy geo- graphically distributed replicas without penalizing the ordering of operations.
+
+Second, instead of totally ordering operations before execut- ing them, as traditionally done in state machine replication [8], GeoPaxos partially orders operations. It is well-known that state machine replication does not need a total order of operations [9] and a few systems have exploited this fact (e.g., [10], [2]). GeoPaxos differs from existing systems in the way it implements partial order. GeoPaxos uses multiple independent instances of Multi-Paxos [11] to order operations—hereafter, we call an instance of Multi-Paxos a Paxos group or simply a group. Operations are ordered by one or more groups, depending on the objects they access. Operations ordered by a single group are the most efficient ones since they involve servers in datacenters in the same region. Operations that involve multiple groups require coordination among servers in datacenters that may be far apart and thus perform worse than single-group operations. GeoPaxos’s approach to partial order can take advantage of public cloud computing infrastructures such as Amazon EC2 [12]: fault tolerance is provided by nodes in datacenters in different availability zones, within the same region; performance is provided by replicas in different regions. Although intra-region redundancy does not tolerate catastrophic failures in which all datacenters of a region are wiped out, most applications do not require this level of reliability [1].
+
+Third, to maximize the number of single-group operations, GeoPaxos exploits geographic locality. Geographic locality presumes that objects have a preferred site, that is, a site where objects are most likely accessed. Geographic locality is common in many online services. For example, operations on a user’s data often originate in the region where the user is. Some distributed systems exploit locality by sharding the data and placing shards near the users of the data (e.g., [1], [4]). GeoPaxos does not shard the service state; instead, it distributes the responsibility for ordering operations to Paxos groups deployed in different regions. Operations are ordered by the groups in the preferred sites of the objects accessed by the operation.
+
+The rest of the paper is structured as follows. Section II details the system model and recalls fundamental notions. Section III overviews the main paper contributions. Section IV
+details GeoPaxos. Section V describes our prototype. Sec- tion VI presents our performance evaluation. Section VII reviews related work and Section VIII concludes the paper.
+
+[add better explanations of the things]
+[add images]
