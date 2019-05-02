@@ -6,15 +6,20 @@ Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of 
 In this chapter I will first explain what a b+ tree is, how it works and what are its advantages and disadvantages. I will then describe the specific b+ tree used in our application. Then I will go over the various approaches that were attempted to improve the performance of the repartition optimization, followed with tests on the performance of the repartition only and finally with GeoPaxos as well.
 
 \section{B+ tree}\label{sec:B+tree}
-[maybe say first what a b-tree is]
 
-A B+ tree is an N-ary tree with a variable but often large number of children per node. A B+ tree consists of a root, internal nodes and leaves.[1] The root may be either a leaf or a node with two or more children.[2]
+\section{B+tree introduction}\label{sec:b+tree-introduction}
+The b+tree is the data structure that was chosen to store the data in the geo-replicated servers. 
+But what is a b+tree? To answer that, let's first go over what a normal B-tree looks like. 
 
-A B+ tree can be viewed as a B-tree in which each node contains only keys (not key–value pairs), and to which an additional level is added at the bottom with linked leaves.
+A b-tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, it's time complexities for search, insertion and deletion are still $O(log n)$.
 
-The primary value of a B+ tree is in storing data for efficient retrieval in a block-oriented storage context — in particular, filesystems. This is primarily because unlike binary search trees, B+ trees have very high fanout (number of pointers to child nodes in a node,[1] typically on the order of 100 or more), which reduces the number of I/O operations required to find an element in the tree.
+A b+tree is similar to a b-tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+tree can be quite high, particularly compared to a B-tree. In our implementation, we use a branching factor of $b=100$.
 
-The order, or branching factor, b of a B+ tree measures the capacity of nodes (i.e., the number of children nodes) for internal nodes in the tree. The actual number of children for a node, referred to here as m, is constrained for internal nodes so that $\lceil b/2\rceil \leq m\leq b$. The root is an exception: it is allowed to have as few as two children.[1] For example, if the order of a B+ tree is 7, each internal node (except for the root) may have between 4 and 7 children; the root may have between 2 and 7. Leaf nodes have no children, but are constrained so that the number of keys must be at least $\lceil b/2 \rceil$  and at most b. In the situation where a B+ tree is nearly empty, it only contains one node, which is a leaf node. (The root is also the single leaf, in this case.) This node is permitted to have as little as one key if necessary and at most b-1.
+The main advantage of the B+tree, similarly to a B-tree, is still when it comes to accessing big amounts of data at once. Say, for example, that we want to perform some operation on a range of elmeents. Since the data items are all at the leaves and grouped together, we can retrieve at once hundreds of data items with few operations. 
+
+Say that we have a branching factor of $b$. Leaf nodes and inner nodes can have a number of children between $\lceil b/2 \rceil$ and $b$. this means that in our implementation, with $b=100$, leaf nodes and inner nodes will always have between 50 and 100 children. The exception is the root, which initially will have only one children, and it will act as a leaf. Once it has $b-1$ data items, two inner nodes are created, they become children of the root and they get half of the data items each; at this point, the root will start acting like an inner node, with a minimum of 2 children up to $b$.
+
+The splitting of nodes is similar to other self-balancing trees: when a node reaches the maximum number of children allowed by the branching factor, a new node is created, and half of the children of the full node are given to the new node. Since then the new node has to be appended to the parent's children, a split may propagate up to the root of the tree.
 
 \begin{figure}[htb]
     \centering
@@ -27,34 +32,90 @@ The order, or branching factor, b of a B+ tree measures the capacity of nodes (i
     \label{fig:b+tree}
 \end{figure}
 
-[add characteristics from wiki]
+[add characteristics from wiki?]
 
-Insertion[edit]
-Perform a search to determine what bucket the new record should go into.
-If the bucket is not full (at most b-1 entries after the insertion), add the record.
-Otherwise, before inserting the new record
-split the bucket.
-original node has $\lceil(L+1)/2\rceil$ items
-new node has $\lfloor(L+1)/2\rfloor$ items
-Move $\lceil(L+1)/2\rceil$-th key to the parent, and insert the new node to the parent.
-Repeat until a parent is found that need not split.
-If the root splits, treat it as if it has an empty parent and split as outline above.
-B-trees grow at the root and not at the leaves.[1]
+\section{Specific implementation}\label{sec:specific-implementation}
+For our application, the basic B+tree needs to have some extra characteristics added to it. 
+
+First of all, each node (root, inner and leaf nodes) will store statistics based on the operations performed. In particular, each node will have two counters, one for read and one for write operations, for each group in the system. Therefore, if we have three groups, each node will have six counters. The statistics are updated from the root up to the node that handles the item accessed.
+
+[put picture that shows statistic update]
+\begin{figure}[htb]
+  \centering
+  \includegraphics{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
+
+These statistics will be used as workload when the repartition will be executed. Once the repartition is performed, the statistics will be updated with the formula:
+$$ current\_statistics = \alpha \cdot old\_statistics + (1-\alpha) \cdot new\_statistics $$
+Where the old statistics are the ones gathered until the past repartition, and the new statistics are the ones between the past repartition and the current one.
+[put picture that shows which are old and which are new?]
+\begin{figure}[htb]
+  \centering
+  \includegraphics{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
+
+Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we don't know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
+
+The second thing that we need to store in the nodes of our B+tree are the partitions. In particular, we need to store both the partitions that take care of each node, and the preferred partition in case there are multiple partitions to choose from. Initially, each new node will be replicated to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the following operation on each object, until the next repartition. 
+
+If a node splits, the new node will inherit the partitions from the full node. This is again a heuristic, based on the high likelihood that close keys will have similar accesses.
 
 
-[explain the statistics, how/when they're upadted, node splitting, aging]
 \section{Optimization approaches}\label{sec:optimization-approaches}
 
 \subsection{group by level(bucket)}\label{sec:fixed-size buckets}
 [pic of grouped levels]
+\begin{figure}[htb]
+  \centering
+  \includegraphics{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
 
 \subsection{dynamic bucket}\label{sec:variable-size buckets}
 if few reads compared to parent, inherit
 [pic of grouped levels]
+\begin{figure}[htb]
+  \centering
+  \includegraphics{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
 
 \subsection{hot groups}\label{sec:hot-groups}
 
+[logic behind it, with a picture/table to show workloads and which group to discard]
+
+[difficulty of choosing threshold]
+
 \subsection{LRU caching}\label{sec:LRU caching}
+[explain it in general]
+
+[complexity of LRU]
+
+[show how the key is made]
+
+[the precision]
 
 \section{Optimization tests}\label{sec:optimization-tests}
 

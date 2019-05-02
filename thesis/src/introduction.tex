@@ -5,10 +5,16 @@
 
 
 \section{Previous Work}\label{sec:previous-work}
+[cite the one pedone sent, look for more]
 
-
-\section{Main Objective}
+\section{Main Objective}\label{sec:main-objective}
 
 
 \section{The Structure of this Report}\label{the-structure-of-this-report}
+The remaining chapters of this report will be structured as follows.
 
+First there will be a brief overview of the background needed to better understand the core part of the report; the background will go over some of the basics of distributed systems and algorithms, including terminology and fundamental concepts of this branch. The background will then continue with the introduction to the problem of Consensus, followed by the Paxos algorithm, which is used to solve the consensus problem, and finally GeoPaxos[cite], an improved version of Paxos particularly suited for geo-distributed systems. 
+
+Then we will discuss the usage of a B+tree with GeoPaxos, including the advantages and the challenges that come with it. Finally we will discuss the repartition problem of a distributed B+tree, which is the core subject of this report. This part will include an introduction to the problem, followed by a list of attempted solutions for improving the repartition process. The chapter will then be concluded with a various tests, both on the performance of the solutions presented, and on the execution of GeoPaxos with the different repartition algorithms.
+
+The last chapter will be about drawing the conclusions of this work, discussing possible improvements and future work, and some final remarks.
