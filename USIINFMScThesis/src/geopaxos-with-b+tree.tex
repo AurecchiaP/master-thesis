@@ -23,7 +23,7 @@ The splitting of nodes is similar to other self-balancing trees: when a node rea
 
 \begin{figure}[htb]
     \centering
-    \includegraphics{img/b+tree.png}
+    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
     \caption[The architecture of the system]{ The architecture of the system. The
       \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
       the main Viper extension and the new debugger extension. They both interact,
@@ -42,7 +42,7 @@ First of all, each node (root, inner and leaf nodes) will store statistics based
 [put picture that shows statistic update]
 \begin{figure}[htb]
   \centering
-  \includegraphics{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
   \caption[The architecture of the system]{ The architecture of the system. The
     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
     the main Viper extension and the new debugger extension. They both interact,
@@ -57,7 +57,7 @@ Where the old statistics are the ones gathered until the past repartition, and t
 [put picture that shows which are old and which are new?]
 \begin{figure}[htb]
   \centering
-  \includegraphics{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
   \caption[The architecture of the system]{ The architecture of the system. The
     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
     the main Viper extension and the new debugger extension. They both interact,
@@ -74,12 +74,44 @@ If a node splits, the new node will inherit the partitions from the full node. T
 
 
 \section{Optimization approaches}\label{sec:optimization-approaches}
+In this section I will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. I will then go over the various approaches that were attempted to improve the repartition optimization. 
 
-\subsection{group by level(bucket)}\label{sec:fixed-size buckets}
+\subsection{Optimal partitions algorithm}\label{sec:optimal-partitions-algorithm} 
+!!! fa un po' schifo
+The simplest algorithm to implement is the one that compares all the possible combinations of partitions and picks the best one. While this algorithm will give the optimal assignments for minimum average latency for a certain workload, it is also the one that takes the longer amount of time. We will use the performance of this algorithm as a [starting point?] to compare our later algorithms with.
+
+The algorithm goes top to bottom and it calculates the partitions for each node. For each node, we get the workload, that may looks as follows:
+
+\begin{table}[htb]
+  \centering
+  \begin{tabular}{l l l l}
+    \hline
+    & \textbf{Group 1} & \textbf{Group 2} & \textbf{Group 3} \\
+    \hline
+    \textbf{Reads} & 150 & 37 & 540 \\
+    \textbf{Writes} & 32 & 10 & 93 \\
+    \hline
+  \end{tabular}
+  \caption{Example of a possible workload of a node in a case with 3 groups. The node counts the number of read and write operations received from each group, to be used for the repartition algorithm.}\label{tab:workload-example}
+\end{table}
+
+We then load a graph that represents the geographic placements of the various replicas, where the cost of the edges is the estimated average Round Trip Time required to send a message.
+[put a pic with a graph]
+
+We then proceed by looping over all possible combinations of partitions, where a partition can be taken or not taken. Obviously, at least one partition has to be taken. In the case of 3 groups, we would have to consider $2^3 -1 = 7$ combinations: $001, 010, 100, 011, 101, 110, 111$, where 1 and 0 mean that the object will be or will not be assigned to that specific replica, respectively.
+
+Given the number of reads and writes for each group, and the current groups to which we're replicating this object, we multiply the number of reads by the latency with the closest replica that would have this object. For writes, we have to add the latency of all the replicas that have this object, since the operation is going to modify the data item.
+
+Also note that the result depends on the latency that we are currently considering: for example, if we're doing the calculations from the point of view of a replica that will not have this object, each read will have to go to a different replica; therefore we have to consider the costs from the point of view of all the replicas.
+
+Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
+
+\subsection{fixed-size buckets}\label{sec:fixed-size buckets}
+
 [pic of grouped levels]
 \begin{figure}[htb]
   \centering
-  \includegraphics{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
   \caption[The architecture of the system]{ The architecture of the system. The
     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
     the main Viper extension and the new debugger extension. They both interact,
@@ -93,7 +125,7 @@ if few reads compared to parent, inherit
 [pic of grouped levels]
 \begin{figure}[htb]
   \centering
-  \includegraphics{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
   \caption[The architecture of the system]{ The architecture of the system. The
     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
     the main Viper extension and the new debugger extension. They both interact,
