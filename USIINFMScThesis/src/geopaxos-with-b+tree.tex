@@ -107,6 +107,16 @@ Also note that the result depends on the latency that we are currently consideri
 Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
 
 \subsection{fixed-size buckets}\label{sec:fixed-size buckets}
+One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure [sotto]. As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
+
+There are also multiple ways to group things in the case where we have an odd number of levels. Since we're using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. [put pic] The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of odd levels.
+
+It is also important to remember that this improvement affects only the number of objects, not the groups; therefore, in the case where we have $n$ objects and $m$ groups, this would improve on the linear number of objects $n$ but it would not affect the number of combinations, which grows as $2^m$.
+
+In general, given a branching factor of $b$ of and objects $n$, the number of calculations we would be doing would be around $\approx\cfrac{n}{b}$ as the tree grows, since we are approximating all the calculations at level 0, which in a big tree is by far the level with the most nodes.
+
+[performance?]
+[specify how many calculations we are saving?]
 
 [pic of grouped levels]
 \begin{figure}[htb]
@@ -121,7 +131,7 @@ Once we have gone over all the combinations, we pick the one with the lowest cos
 \end{figure}
 
 \subsection{dynamic bucket}\label{sec:variable-size buckets}
-if few reads compared to parent, inherit
+
 [pic of grouped levels]
 \begin{figure}[htb]
   \centering
@@ -142,6 +152,8 @@ if few reads compared to parent, inherit
 
 \subsection{LRU caching}\label{sec:LRU caching}
 [explain it in general]
+
+[warming up, pre-warming based on the graph]
 
 [complexity of LRU]
 
