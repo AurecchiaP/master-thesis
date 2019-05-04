@@ -130,7 +130,14 @@ In general, given a branching factor of $b$ of and objects $n$, the number of ca
   \label{fig:b+tree}
 \end{figure}
 
-\subsection{dynamic bucket}\label{sec:variable-size buckets}
+\subsection{variable-size buckets}\label{sec:variable-size buckets}
+The idea of the fixed-size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+tree. 
+
+An alternative approach is to to have a variable, or dynamic, size of buckets. The idea is to group in two or more levels the nodes that have a low amount of statistics, and instead do the optimal calculations for the nodes with many operations associated to them. The idea is that approximating the nodes with few operations would not hinder the performance by much, as the object associated to those nodes will not be accessed often by the clients, while instead the objects that are used often will have their optimal partitions.
+
+It is also more likely for the nodes towards the leaves to be approximated, since the parents will have the aggregated statistics of all their children.
+
+One challenge of the variable-size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
 
 [pic of grouped levels]
 \begin{figure}[htb]
@@ -145,6 +152,27 @@ In general, given a branching factor of $b$ of and objects $n$, the number of ca
 \end{figure}
 
 \subsection{hot groups}\label{sec:hot-groups}
+Another option is to try to reduce the number of combinations that we have to consider for each node. Since the complexity grows exponentially with the number of groups, if we're able to discard some combinations before we calculated their actual cost, then we should have a greater improvement compared to the optimizations that reduce the number of nodes.
+
+One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment wouldn't replicate the objects to the partition/group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
+
+The gain/cost of replicating to a group with few operations also depends on the ratio between read/write operations, obviously: with many reads we would want to assign the object to all groups, while with many writes we would want to reduce the number of group assignments, as with every write we would have to coordinate between all groups involved. In general, though, such a system is better suited for applications with more reads than writes, therefore our assumption of discarding groups with few operations still holds.
+
+The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``hot groups''). Then, when we're going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the hot groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
+
+
+\begin{table}[htb]
+  \centering
+  \begin{tabular}{l l l l}
+    \hline
+    & \textbf{Group 1} & \textbf{Group 2} & \textbf{Group 3} \\
+    \hline
+    \textbf{Reads} & 150 & 37 & 540 \\
+    \textbf{Writes} & 32 & 10 & 93 \\
+    \hline
+  \end{tabular}
+  \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:workload-example}
+\end{table}
 
 [logic behind it, with a picture/table to show workloads and which group to discard]
 
@@ -162,6 +190,8 @@ In general, given a branching factor of $b$ of and objects $n$, the number of ca
 [the precision]
 
 \section{Optimization tests}\label{sec:optimization-tests}
+
+for the types of optimizations with variables, say what they were set to, such as 0.1 for LRU
 
 \section{GeoPaxos tests}\label{sec:geopaxos-tests}
 [say how the clients act, put a skew graph, different types of clients, repartitino timings...]
