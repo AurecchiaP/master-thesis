@@ -178,20 +178,84 @@ The way to implement this is fairly simple: with the workload at hand, we find t
 
 [difficulty of choosing threshold]
 
-\subsection{LRU caching}\label{sec:LRU caching}
-[explain it in general]
+\subsection{LRU caching}\label{sec:lru-caching}
+[maybe start with a complete description, then go bit by bit]
+This method makes use of two important characteristics that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition.
 
-[warming up, pre-warming based on the graph]
+\subsubsection{First key}\label{sec:first-key}
+The first one is that as long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this won't change while our system is running, and in a real world application too it shouldn't change often, as it would mean that we either change completely a server or that we move them around. 
 
-[complexity of LRU]
+This means that we may end up doing the same calculations multiple times, getting the same results each time. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
 
-[show how the key is made]
+Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can get them in $a\approx O(1)$ time. This spawn two issues.
 
-[the precision]
+How do we define the key? we know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the statistics are unbounded, and since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each others would give us the same assignment of partition, meaning that we would have multiple keys for the same values for no reason.
+
+These two issues could lead us to having a data structure that grows to an uncontrollable size.
+
+What we can do instead is to encode the workload in a new type of key. Remember that for each group we have a value for reads and writes. For each group, we will calculate the read write/ratio and the update ratio. The read/write ratio is just the amout of total operations for each group compared to the total number of operations for the whole node. For example, with the example workload of table[put number], we would have read write ratios of:
+$$ 11/14, 3/14 $$
+
+Then we calculate the update ratio for each group, which is the ratio between reads and writes for said group. Again, with the workload of table[table] we would get:
+$$1/11 2/3 $$
+
+The ratios can then be approximated to different precisions, depending on our needs. If we normalize them from 0 to 9 we would have a far smaller data structure, but it would also be a quite big approximation. 0 to 99 would give us an acceptable approximation without giving us humongous keys, as long as we don't have a lot of groups. 
+
+Finally, we get the key for this workload by concatenating the values:
+$$ K = RW_1 U_1 RW_2 U_2 $$
+
+Our final key for table[table] would be, if we use 0-99 values:
+$$ K = $$
+
+\begin{table}[htb]
+  \centering
+  \begin{tabular}{l l l l}
+    \hline
+    & \textbf{Group 1} & \textbf{Group 2} & \textbf{Group 3} \\
+    \hline
+    \textbf{Reads} & 150 & 37 & 540 \\
+    \textbf{Writes} & 32 & 10 & 93 \\
+    \hline
+  \end{tabular}
+  \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:workload-example}
+\end{table}
+
+
+[is there another issue? forgot]
+
+\subsubsection{Second-key}\label{sec:second-key}
+
+Our workload to key encoding now gives us a fair improvement, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even that big. We then have to further limit the number of keys. 
+
+The hindsight that can help us improve on what we have is that many of those keys will never be used; for example, the key with all 0s does not represent any workload we could have. Also, even a key with a possible workload could be very unlikely and rare case, and therefore we could just not store it and just do the recalculation the few times we do encounter such a workload. 
+
+A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still don't want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time.
+
+[explanation of LRU, how the list works, and so on]
+[pretty picture of LRU]
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
+
+[warming up, pre warm-up]
+
 
 \section{Optimization tests}\label{sec:optimization-tests}
 
 for the types of optimizations with variables, say what they were set to, such as 0.1 for LRU
 
 \section{GeoPaxos tests}\label{sec:geopaxos-tests}
+
+\subsection{tests-setup}\label{sec:tests-setup}
+
+[explain types of clients, show skew, type of distribution, loads]
+[put structure, with replicas, geo-locations, cite geopaxos for latencies]
+
 [say how the clients act, put a skew graph, different types of clients, repartitino timings...]
