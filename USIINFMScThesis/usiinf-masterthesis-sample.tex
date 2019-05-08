@@ -1,8 +1,10 @@
 \documentclass[mscthesis,12pt]{usiinfthesis}
 \usepackage{lipsum}
-
-
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
 \usepackage{listings}
+
 
 \lstdefinelanguage{algebra}
 {morekeywords={import,sort,constructors,observers,transformers,axioms,if,
@@ -14,12 +16,12 @@ morecomment=[l]{//s},
 
 
 \title{Repartition optimization for \\ distributed B+ trees} %compulsory
-\specialization{Dependable Distributed Systems}%optional
+\specialization{Distributed Systems}%optional
 % \subtitle{Subtitle: Reinventing the World} %optional 
 \author{Paolo Aurecchia} %compulsory
 \begin{committee}
-\advisor{Prof.}{Student's}{Advisor} %compulsory
-\coadvisor{Prof.}{Student's}{Co-Advisor}{} %optional
+\advisor{Prof.}{Fernando}{Pedone} %compulsory
+\coadvisor{Dr.}{Paulo}{Coelho}{} %optional
 \end{committee}
 \Day{Yesterday} %compulsory
 \Month{June} %compulsory

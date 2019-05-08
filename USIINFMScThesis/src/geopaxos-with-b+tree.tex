@@ -11,6 +11,7 @@ In this chapter I will first explain what a b+ tree is, how it works and what ar
 The b+tree is the data structure that was chosen to store the data in the geo-replicated servers. 
 But what is a b+tree? To answer that, let's first go over what a normal B-tree looks like. 
 
+
 A b-tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, it's time complexities for search, insertion and deletion are still $O(log n)$.
 
 A b+tree is similar to a b-tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+tree can be quite high, particularly compared to a B-tree. In our implementation, we use a branching factor of $b=100$.
@@ -107,7 +108,9 @@ Also note that the result depends on the latency that we are currently consideri
 Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
 
 \subsection{fixed-size buckets}\label{sec:fixed-size buckets}
-One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure [sotto]. As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
+One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure [sotto].
+
+As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
 
 There are also multiple ways to group things in the case where we have an odd number of levels. Since we're using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. [put pic] The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of odd levels.
 
@@ -244,12 +247,62 @@ A possible way to exploit this is by implementing a sort of Least Recently Used 
   \label{fig:b+tree}
 \end{figure}
 
-[warming up, pre warm-up]
+\subsubsection{LRU warmup}\label{sec:warmup}
+The main issue of using an LRU-style caching is that initially, the performance will be as bad as having no optimization at all. This is because until we actually have any previous calculation cached, we will still have to do all the calculations one by one. 
+
+One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better gains. For example, we can use the hot groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The hot groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the hot groups optimization would still be useful when we have a cache miss. A possible flaw of this approach is that if one of our optimizations makes use of important approximations, then the values we store in our cache might be far from optimal; therefore, we have to be careful not to exaggerate with the approaches used.
+
+Another alternative solution to manage the bad performance of a cold LRU is to pre-load the LRU. As long as the system remains the same, we know that the cached values will still be valid. Therefore we can either store the LRU data from a previous execution, so that we can reload it before the next one, or we can pre-compute some entries of the LRU before any execution, for example entries that we expect to be likely found in our application. This would greatly reduce the drawbacks of a slow start.
 
 
 \section{Optimization tests}\label{sec:optimization-tests}
-
 for the types of optimizations with variables, say what they were set to, such as 0.1 for LRU
+\subsection{fixed-size buckets tests}\label{sec:fixed-size buckets-tests}
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
+% \subsection{variable-size buckets tests}\label{sec:variable-size buckets-tests}
+% \begin{figure}[htb]
+%   \centering
+%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+%   \caption[The architecture of the system]{ The architecture of the system. The
+%     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+%     the main Viper extension and the new debugger extension. They both interact,
+%     independently, with Visual Studio Code. Viper Server is responsible for
+%     running the verification backends.}
+%   \label{fig:b+tree}
+% \end{figure}
+% \subsection{hot groups tests}\label{sec:hot-gropus-tests}
+% \begin{figure}[htb]
+%   \centering
+%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+%   \caption[The architecture of the system]{ The architecture of the system. The
+%     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+%     the main Viper extension and the new debugger extension. They both interact,
+%     independently, with Visual Studio Code. Viper Server is responsible for
+%     running the verification backends.}
+%   \label{fig:b+tree}
+% \end{figure}
+% \subsection{LRU caching tests}\label{sec:lru-caching-tests}
+% \begin{figure}[htb]
+%   \centering
+%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+%   \caption[The architecture of the system]{ The architecture of the system. The
+%     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+%     the main Viper extension and the new debugger extension. They both interact,
+%     independently, with Visual Studio Code. Viper Server is responsible for
+%     running the verification backends.}
+%   \label{fig:b+tree}
+% \end{figure}
+
+\subsection{lru with hot groups}\label{sec:lru-hot-groups}
 
 \section{GeoPaxos tests}\label{sec:geopaxos-tests}
 

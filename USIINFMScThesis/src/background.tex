@@ -31,6 +31,11 @@ Some types of failure models can be:
 
 Again, the choice of the failure model gives us different degrees of difficulty: a failstop model makes the problem easier to solve, but a system that is able to tolerate byzantine failures is going to be much more resiliant to failures.
 
+\section{State Machine Replication}\label{sec:state-machine-replication}
+State Machine Replication (SMR) is a fundamental aspect of distributed systems. When we have a multitude of servers that different clients can access, for example, we usually want the state of the servers to be coherent and cosistent among themselves. A way to achieve this is with SMR. By having operations that are deterministic, and imposing an order on the operations (more or less strict depending on the operations themselves and the specific system), it is possible to maintain a consistent state on the different servers. Lamport was the first to introduce SMR[on "Using Time Instead of Timeout In Distributed Systems"].
+
+The basic idea comes from State Machines, which can be defined by sets of states, inputs, outputs and transition functions. Similarly, if we treat our servers as State Machine, then we know that given the correct order of deterministic operations we know that the final state of the server will be the same. Since for SMR the ordering of the operations is necessary, we need to achieve this in a distributed environment. We will discuss this problem and a possible solution in the next sections, namely Consensus and Paxos.
+
 \section{Consensus}\label{sec:Consensus}
 
 The problem of consensus is a fundamental problem in distributed systems: it was first introduced in the early 80s \cite[]{Pease}, \cite[]{Lamport} and since then it remained important in most distributed environment, ranging from more classical server applications to the more recent Blockchains.
@@ -112,42 +117,30 @@ The acceptors, if the message of the proposer is still the most recent on-going 
 
 In phase 3, once the proposer receives again a quorum of replies from the acceptors, will be allowed to send to the learners the newly decided value.
 
-The pseudo-code for the phases is as follows:
-\begin{verbatim}
-  c-rnd : highest-numbered round the process has started
-c-val : value the process has picked for round c-rnd
-% rnd : highest-numbered round the acceptor has participated, initially 0 v -rnd : highest-numbered round the acceptor has cast a vote, initially 0 v-val : value voted by the acceptor in round v-rnd, initially null
-% To propose value v:
-% increase c-rnd to an arbitrary unique value send (PHASE 1A, c-rnd) to acceptors
-% upon receiving (PHASE 1A, c-rnd) from proposer if c-rnd > rnd then
-% rnd ← c-rnd
-% send (PHASE 1B, rnd, v-rnd, v-val) to proposer
-% Phase 1B Phase 1A Acceptor Proposer
-% upon receiving (PHASE 1B, rnd, v-rnd, v-val) from Qa such that c-rnd = rnd k ← largest v-rnd value received
-% V ← set of (v-rnd,v-val) received with v-rnd = k
-% if k = 0 then let c-val be v
-% else c-val ← the only v-val in V
-% send (PHASE 2A, c-rnd, c-val) to acceptors
-% upon receiving (PHASE 2A, c-rnd, c-val) from proposer if c-rnd >= rnd then
-% v-rnd ← c-rnd
-% v-val ← c-val
-% send (PHASE 2B, v-rnd, v-val) to proposer
-% upon receiving (PHASE 2B, v-rnd, v-val) from Qa
-% if for all received messages: v-rnd = c-rnd then
-% send (DECISION, v-val) to learners
-upon receiving (PHASE 1B, rnd, v-rnd, v-val) from Qa such that c-rnd = rnd k ← largest v-rnd value received
-V ← set of (v-rnd,v-val) received with v-rnd = k
-if k = 0 then let c-val be v
-else c-val ← the only v-val in V
-send (PHASE 2A, c-rnd, c-val) to acceptors
-upon receiving (PHASE 2A, c-rnd, c-val) from proposer if c-rnd >= rnd then
-v-rnd ← c-rnd
-v-val ← c-val
-send (PHASE 2B, v-rnd, v-val) to proposer
-upon receiving (PHASE 2B, v-rnd, v-val) from Qa
-if for all received messages: v-rnd = c-rnd then
-send (DECISION, v-val) to learners
-\end{verbatim}
+The pseudo-code for the phases is as follows:[placeholder]
+\def\BState{\State\hskip-\ALG@thistlm}
+\begin{algorithm}
+  \caption{My algorithm}\label{euclid}
+  \begin{algorithmic}[1]
+  \Procedure{MyProcedure}{}
+  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
+  \State $i \gets \textit{patlen}$
+  \State \emph{top}:
+  \If {$i > \textit{stringlen}$} \Return false
+  \EndIf
+  \State $j \gets \textit{patlen}$
+  \State \emph{loop}:
+  \If {$\textit{string}(i) = \textit{path}(j)$}
+  \State $j \gets j-1$.
+  \State $i \gets i-1$.
+  \State \textbf{goto} \emph{loop}.
+  \State \textbf{close};
+  \EndIf
+  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
+  \State \textbf{goto} \emph{top}.
+  \EndProcedure
+  \end{algorithmic}
+  \end{algorithm}
 
 \begin{itemize}
   \item \textbf{Termination} Eventually every correct process decides on one value
@@ -169,7 +162,7 @@ send (DECISION, v-val) to learners
 
 [should I add correctness, liveness, and so on?]
 
-Remember that this algorithm allows only for the decision of one value; once value is decided, another instance of Paxos has to be initiated. Hence, for realistic use cases one would use system that allow to run multiple instances of paxos in a row, such as MultiPaxos.
+Remember that this algorithm allows only for the decision of one value; once a value is decided, another instance of Paxos has to be initiated. Hence, for realistic use cases one would use system that allow to run multiple instances of paxos in a row, such as MultiPaxos.
 
 The presented version of Paxos is the simplest one. Liveness in this case is not guaranteed; to ensure it, only the leader should be allowed to propose values, since otherwise it is possible that two proposers keep stealing their turn from each others without making any progress. Therefore the proposers should forward their values to the leader that will then try to propose them.
 
@@ -179,6 +172,8 @@ Also, at the end of Phase 2B the acceptors could send the decided value directly
 [should I write best message delays?]
 
 \section{GeoPaxos}\label{sec:GeoPaxos}
+
+
 Many current online services must serve clients distributed across geographic areas. In order to improve service avail- ability and performance, servers are typically replicated and deployed over geographically distributed sites (i.e., datacen- ters). By replicating the servers, the service can be configured to tolerate the crash of nodes within a single datacenter and the disruption of an entire datacenter. Geographic replication can improve performance by placing the data close to the clients, which reduces service latency.
 
 Designing systems that coordinate geographically dis- tributed replicas is challenging. Some replicated systems resort to weak consistency to avoid the overhead of wide-area com- munication. Strong consistency provides more intuitive service behavior than weak consistency, at the cost of increased latency. Due to the importance of providing services that clients can intuitively understand, several approaches have been proposed to improve the performance of geo-distributed strongly consistent systems (e.g., [1], [2], [3], [4]). This paper presents GeoPaxos, a protocol that combines three insights to implement efficient state machine replication in geographically distributed environments.
