@@ -11,7 +11,6 @@ In this chapter I will first explain what a b+ tree is, how it works and what ar
 The b+tree is the data structure that was chosen to store the data in the geo-replicated servers. 
 But what is a b+tree? To answer that, let's first go over what a normal B-tree looks like. 
 
-
 A b-tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, it's time complexities for search, insertion and deletion are still $O(log n)$.
 
 A b+tree is similar to a b-tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+tree can be quite high, particularly compared to a B-tree. In our implementation, we use a branching factor of $b=100$.
@@ -256,7 +255,15 @@ Another alternative solution to manage the bad performance of a cold LRU is to p
 
 
 \section{Optimization tests}\label{sec:optimization-tests}
-for the types of optimizations with variables, say what they were set to, such as 0.1 for LRU
+In this section we will test and compare all the different approaches to perform the repartition that were presented in the previous section. 
+In particular, we will be focusing on the time it takes to complete the repartition and on the difference of the actual assignment of partitions of the different nodes of the tree.
+
+For each case, we will use an initially empty B+ Tree of maximum slot use equal to 100, on which we perform [10M?] operations, and then we will issue a repartition command. Since the tree is initially empty, it means that all the nodes will have to be partitioned, therefore this test should give us a decent idea of the performance of the repartition algorithm in a worst-case scenario. 
+
+\subsection{all combinations}\label{sec:all-combinations}
+This scenario will be used as a benchmark to which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload, but it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently to make sure that the current partitioning matches the load of the system.
+
+[for the types of optimizations with variables, say what they were set to, such as 0.1 for LRU]
 \subsection{fixed-size buckets tests}\label{sec:fixed-size buckets-tests}
 \begin{figure}[htb]
   \centering
@@ -268,6 +275,8 @@ for the types of optimizations with variables, say what they were set to, such a
     running the verification backends.}
   \label{fig:b+tree}
 \end{figure}
+
+comment on the time performance and on the quality of the partitions (not good).
 % \subsection{variable-size buckets tests}\label{sec:variable-size buckets-tests}
 % \begin{figure}[htb]
 %   \centering
@@ -307,8 +316,41 @@ for the types of optimizations with variables, say what they were set to, such a
 \section{GeoPaxos tests}\label{sec:geopaxos-tests}
 
 \subsection{tests-setup}\label{sec:tests-setup}
+Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations. Although it is quite hard to even come up with tests that could be realistic, we believe that the tests performed should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
+
+[explain the need for throughput limit and outstanding messages]
+
+The tests have a range of variables to be set, including:
+\begin{itemize}
+  \item \textbf{Number of clients (per destination group)} The number of clients that are connected to each group of the system, e.g. the number of clients for each region
+  \item \textbf{Number of threads (per client)} The number of threads used for each client entity. Increasing the number of threads boosts the maximum throughput of a single client, but each client still has to receive a reply to a previous message sent before sending a new one. During testing we keep the value in a way so that the performance of the clients is consistent, and we use a high number of threads to limit the bottleneck of message handling so that we can focus the performance on the latency of the communications
+  \item \textbf{Number of outstanding messages} The maximum number of requests that a client can have on-hold at once. If set to one, a client can only send a second request after it has received an answer for the first request
+  \item \textbf{Number of items} The total number of items, or keys, on which the clients can perform operations
+  \item \textbf{Maximum throughput (msgs/s)} The maximum number of messages that a client can send in a second
+  \item \textbf{Range of operations} The interval of keys that the client is going to perform operations on. This usually corresponds to the total number of items, but the beginning and end of the range will be shifted depending on the region of the client
+  \item \textbf{Ratio of operations} The ratio of read and write operations performed by the client
+  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure[])
+\end{itemize}
+
+All the clients behave in the same way. Once started, they send messages to the replica that they are connected to (at a rate depending on the variables defined above), and waits for the replies. There are some possible behaviors of clients that may not seem important at first, but that are quite important to keep under control to avoid unexpected or unwanted results from the tests.
+
+One interesting such case happens when a client, because of a period with a high throughput, has a repartition that puts a lot of objects in the region where he is at. This leads to his operations having even lower latency than before, which leads to even higher throughput than before, leading to a situation where he will be the most performant client exactly because it was performant in the past (``the rich get richer''). To handle this, we have two variables: the maximum throughput, that makes it so that after a certain point, the client cannot send more messages than a certain threshold, stopping him from ``getting richer''. Furthermore, we can increase the number of outstanding messages; while this sounds counterintuitive, having a higher outstanding limit allows slower clients to send more messages without having to wait for replies of past messages, limiting the gap between fast and slow clients. Both these settings (maximum throughput and oustading messages) could be realistic behaviours, too: common clients may not have the fastest internet speed, therefore limiting their maximum throughput, and not all requests may be dependent on each other, therefore a client won't have to wait a reply for all messages before sending new ones.
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
+  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha05.png}
+  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha0.png}
+  \caption[The architecture of the system]{ The architecture of the system. The
+    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
+    the main Viper extension and the new debugger extension. They both interact,
+    independently, with Visual Studio Code. Viper Server is responsible for
+    running the verification backends.}
+  \label{fig:b+tree}
+\end{figure}
 
 [explain types of clients, show skew, type of distribution, loads]
 [put structure, with replicas, geo-locations, cite geopaxos for latencies]
 
 [say how the clients act, put a skew graph, different types of clients, repartitino timings...]
+[don't forget the test where we change the load over time and the partitions change]

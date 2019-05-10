@@ -1,0 +1,5 @@
+To measure latency:
+./results.py test/ "*.txt" lat
+
+To measure throughput:
+./results.py test/ "*.txt" tp
