@@ -172,3 +172,34 @@ Also, at the end of Phase 2B the acceptors could send the decided value directly
 [should I write best message delays?]
 
 \section{GeoPaxos}\label{sec:GeoPaxos}
+GeoPaxos[cite] is a protocol that achieves high performance of State Machine Replication for strongly consistent systems that are geographically distributed. 
+
+GeoPaxos has makes use of three important features that distinguish it from alternative solutions: these features are \emph{decoupling order from execution}, \emph{partial ordering of operations} and lastly \emph{exploiting geographic locality}.
+
+[explain object partitions, preferred partitions]
+
+\subsection{decoupling order from execution}
+As explained in the previous sections, the simple Paxos protocol introduces a set of roles, namely acceptors, learners, proposers (and an eventual leader). When working with a distributed environment, deciding where to place each of these roles is important: in particular, placing acceptors and learners in the same replica, as it is often done with Paxos[cite?] turns out not to be efficient. This is because we would want replicas to be close to the clients using them to decrease latency, but then the replicas would be far away from each others, increasing the latency required to perform the ordering of messages. For this reason, GeoPaxos decouples the roles of acceptors and learners, which introduces a higher flexibility for the placement of the roles, allowing us to keep acceptor nodes close to each other for the ordering communications and the learners close to the clients, so that their requests will be dispatched faster.
+\subsection{partial ordering of operations}
+The Paxos protocol allows us to impose a total order on all the messages ordered in the system. The issue is that this total ordering requires all the groups to communicate, slowing down the performance of the system. GeoPaxos handles this by only enforcing a partial order on the message.
+A simple example of this can be seen where, for example, we a sequence of various read operations on different objects. Since these operations do not alter the objects, we can perform them in different orders, as the state would remain consistent; but whenever we have a read and write on one object, these operations must be totally ordered.
+\subsection{exploiting geographic locality}
+The third important feature of GeoPaxos is that it tries to exploit the geographic locality of the objects. Whenever clients perform operations on data objects of the system, we would often expect to see a certain degree of locality. In GeoPaxos the state and its objects are not sharder, but instead each object is handled by one or more groups, which means that operations must be ordered by said groups which can be placed in different geographic areas. This means that if we choose the groups that are closer to the region with the highest number of operations for a certain object, we will be able to reduce the latency for the majority of operations, improving the performance. Furthermore, if an object is handled by multiple groups but some operation does not conflict with other operations, then we will use the preferred partition, which is the closest group that has this object.
+
+[for example, if our system contains text documents in various languages, we would expect that the majority of accesses to the documents come from countries whose main languages are the ones that the documents are written in]
+
+\subsection{other GeoPaxos stuff}
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/datacenters.png}
+
+  \caption[The architecture of the system]{ pic desc }
+  \label{fig:datacenters}
+\end{figure}
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partial-ordering.png}
+
+  \caption[The architecture of the system]{ pic desc }
+  \label{fig:partial-ordering}
+\end{figure}

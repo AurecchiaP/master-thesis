@@ -1,21 +1,21 @@
 \chapter{GeoPaxos with b+tree}\label{sec:geopaxos-with-b+tree}
-Now that we have discussed the needed background, we can move onto the next step: using a b+tree on top of GeoPaxos to store the data objects. A b+tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentically replicated in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and change the whole structure of the tree.
+Now that we have discussed the needed background, we can move onto the next step: using a B+ Tree on top of GeoPaxos to store the data objects. A b+tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentically replicated in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and change the whole structure of the tree.
 
-Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of operation. In GeoPaxos the objects are assigned to one or more groups, depending on the type, number and origin of accesses. Of these groups, one will also be chosen in each replica to be the preferred partition for the operation, usually based on geographic location. There has to be a moment when these groups are decided and calculated for each object in the b+tree. For this, we have a command called repartition. The command takes the workload of an object, which is the number of reads and writes from each group on this object, and a graph that represents the geographic location of the various replicas. It then calculates the optimal placement of the object in the groups, that with the given workload would give us the minimum average latency. This operation can take be a big performance bottleneck, since it has to be executed for every object in the tree, and since we have to consider every combination of groups it scales exponentially on the number of groups. We therefore want to find a fast way to perform this operation so that we still get the right assignment of objects in a short amount of time.
+Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of operation. In GeoPaxos the objects are assigned to one or more groups, depending on the type, number and origin of accesses. Of these groups, one will also be chosen in each replica to be the preferred partition for the operation, usually based on geographic location. There has to be a moment when these groups are decided and calculated for each object in the B+ Tree. For this, we have a command called repartition. The command takes the workload of an object, which is the number of reads and writes from each group on this object, and a graph that represents the geographic location of the various replicas. It then calculates the optimal placement of the object in the groups, that with the given workload would give us the minimum average latency. This operation can take be a big performance bottleneck, since it has to be executed for every object in the tree, and since we have to consider every combination of groups it scales exponentially on the number of groups. We therefore want to find a fast way to perform this operation so that we still get the right assignment of objects in a short amount of time.
 
-In this chapter I will first explain what a b+ tree is, how it works and what are its advantages and disadvantages. I will then describe the specific b+ tree used in our application. Then I will go over the various approaches that were attempted to improve the performance of the repartition optimization, followed with tests on the performance of the repartition only and finally with GeoPaxos as well.
+In this chapter we will first explain what a B+ Tree is, how it works and what are its advantages and disadvantages. We will then describe the specific B+ Tree used in our application. Then we will go over the various approaches that were attempted to improve the performance of the repartition optimization, followed with tests on the performance of the repartition only and finally with GeoPaxos as well.
 
-\section{B+ tree}\label{sec:B+tree}
+\section{B+ Tree}\label{sec:b+tree}
 
-\section{B+tree introduction}\label{sec:b+tree-introduction}
-The b+tree is the data structure that was chosen to store the data in the geo-replicated servers. 
-But what is a b+tree? To answer that, let's first go over what a normal B-tree looks like. 
+\section{B+ Tree introduction}\label{sec:b+tree-introduction}
+The B+ Tree is the data structure that was chosen to store the data in the geo-replicated servers. 
+But what is a B+ Tree? To answer that, let's first go over what a normal B-tree looks like. 
 
 A b-tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, it's time complexities for search, insertion and deletion are still $O(log n)$.
 
-A b+tree is similar to a b-tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+tree can be quite high, particularly compared to a B-tree. In our implementation, we use a branching factor of $b=100$.
+A B+ Tree is similar to a b-tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+ Tree can be quite high, particularly compared to a B-tree. In our implementation, we use a branching factor of $b=100$.
 
-The main advantage of the B+tree, similarly to a B-tree, is still when it comes to accessing big amounts of data at once. Say, for example, that we want to perform some operation on a range of elmeents. Since the data items are all at the leaves and grouped together, we can retrieve at once hundreds of data items with few operations. 
+The main advantage of the B+ Tree, similarly to a B-tree, is still when it comes to accessing big amounts of data at once. Say, for example, that we want to perform some operation on a range of elmeents. Since the data items are all at the leaves and grouped together, we can retrieve at once hundreds of data items with few operations. 
 
 Say that we have a branching factor of $b$. Leaf nodes and inner nodes can have a number of children between $\lceil b/2 \rceil$ and $b$. this means that in our implementation, with $b=100$, leaf nodes and inner nodes will always have between 50 and 100 children. The exception is the root, which initially will have only one children, and it will act as a leaf. Once it has $b-1$ data items, two inner nodes are created, they become children of the root and they get half of the data items each; at this point, the root will start acting like an inner node, with a minimum of 2 children up to $b$.
 
@@ -34,8 +34,8 @@ The splitting of nodes is similar to other self-balancing trees: when a node rea
 
 [add characteristics from wiki?]
 
-\section{Specific implementation}\label{sec:specific-implementation}
-For our application, the basic B+tree needs to have some extra characteristics added to it. 
+\subsection{B+ Tree implementation}\label{sec:b+tree-implementation}
+For our application, the basic B+ Tree needs to have some extra characteristics added to it. 
 
 First of all, each node (root, inner and leaf nodes) will store statistics based on the operations performed. In particular, each node will have two counters, one for read and one for write operations, for each group in the system. Therefore, if we have three groups, each node will have six counters. The statistics are updated from the root up to the node that handles the item accessed.
 
@@ -68,13 +68,15 @@ Where the old statistics are the ones gathered until the past repartition, and t
 
 Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we don't know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
 
-The second thing that we need to store in the nodes of our B+tree are the partitions. In particular, we need to store both the partitions that take care of each node, and the preferred partition in case there are multiple partitions to choose from. Initially, each new node will be replicated to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the following operation on each object, until the next repartition. 
+The second thing that we need to store in the nodes of our B+ Tree are the partitions. In particular, we need to store both the partitions that take care of each node, and the preferred partition in case there are multiple partitions to choose from. Initially, each new node will be replicated to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the following operation on each object, until the next repartition. 
 
 If a node splits, the new node will inherit the partitions from the full node. This is again a heuristic, based on the high likelihood that close keys will have similar accesses.
 
+\subsection{System implementation}\label{sec:system-implementation}
+The implementation of the B+ Tree data structure, the repartition algorithms and the further code necessary to use this on top of GeoPaxos was written in C++. Since this is built on top of the GeoPaxos library, there is also the requirement for the libraries needed by GeoPaxos itself, in particular libevent[link] for the networking part, libpaxos for consensus[link] and libmcast[link] for atomic multicast.
 
 \section{Optimization approaches}\label{sec:optimization-approaches}
-In this section I will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. I will then go over the various approaches that were attempted to improve the repartition optimization. 
+In this section we will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. We will then go over the various approaches that were attempted to improve the repartition optimization. 
 
 \subsection{Optimal partitions algorithm}\label{sec:optimal-partitions-algorithm} 
 !!! fa un po' schifo
@@ -133,7 +135,7 @@ In general, given a branching factor of $b$ of and objects $n$, the number of ca
 \end{figure}
 
 \subsection{variable-size buckets}\label{sec:variable-size buckets}
-The idea of the fixed-size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+tree. 
+The idea of the fixed-size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+ Tree. 
 
 An alternative approach is to to have a variable, or dynamic, size of buckets. The idea is to group in two or more levels the nodes that have a low amount of statistics, and instead do the optimal calculations for the nodes with many operations associated to them. The idea is that approximating the nodes with few operations would not hinder the performance by much, as the object associated to those nodes will not be accessed often by the clients, while instead the objects that are used often will have their optimal partitions.
 
@@ -206,7 +208,7 @@ The ratios can then be approximated to different precisions, depending on our ne
 Finally, we get the key for this workload by concatenating the values:
 $$ K = RW_1 U_1 RW_2 U_2 $$
 
-Our final key for table[table] would be, if we use 0-99 values:
+Therefore our final key, when using centile precision, would be:
 $$ K = $$
 
 \begin{table}[htb]
@@ -317,8 +319,6 @@ comment on the time performance and on the quality of the partitions (not good).
 
 \subsection{tests-setup}\label{sec:tests-setup}
 Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations. Although it is quite hard to even come up with tests that could be realistic, we believe that the tests performed should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
-
-[explain the need for throughput limit and outstanding messages]
 
 The tests have a range of variables to be set, including:
 \begin{itemize}
