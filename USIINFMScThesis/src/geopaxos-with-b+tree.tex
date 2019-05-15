@@ -305,10 +305,46 @@ Our workload to key encoding now gives us a fair improvement, allowing us to dis
 
 The hindsight that can help us improve on what we have is that many of those keys will never be used; for example, the key with all 0s does not represent any workload we could have. Also, even a key with a possible workload could be very unlikely and rare case, and therefore we could just not store it and just do the recalculation the few times we do encounter such a workload. 
 
-A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time.
+A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time. Initially we were just using an unlimited size data structure, in particular a HashMap. While it was working quite well in improving the performance of the algorithm, we also had to consider the possible limitations of the system. We have a very big key space, which means that in case that the map gets completely filled up, it is going to require an enormous amount of space, which is unfeasible to handle. Therefore, we decided look for alternative data structures. We decided on using an LRU because it limited the maximum size of the cache, and because it was possible to build one that would still have constant (amortized) retrieval, addition and update of the keys, therefore not slowing down the performance that we had with the simple HashMap.
 
-[explanation of LRU, how the list works, and so on]
-[pretty picture of LRU]
+The LRU is constructed by using two simpler data structures:
+\begin{itemize}  
+  \item A map, which allows for quick addition and retrieval of items. We already had this, so we mostly just had to modify it so that it would work with the LRU.
+  \item A list, which is used to know which items were used last. The most recently used items are put at the front of the list, and the ones at the tail are the next ones to be evicted from the LRU.
+\end{itemize}
+
+The map, instead of storing $<Key, Value>$ as before, now stores $<Key, Pair<Value, List_value>>$.
+
+Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list (the $List_value$) to the front, since it was the most recently used.
+
+When we want to insert an item and the cache is full, we take the item at the tail of the list; this item contains the map key of the item it corresponds to, therefore to delete the item we just delete from the map the item that corresponds to the key, and then we pop the tail of the list. 
+The newly inserted item will then be added to the map, and the $List_value$ will be added to the front of the list.
+
+
+\begin{algorithm}
+  \caption{LRU cache}\label{euclid}
+  \begin{algorithmic}[1]
+  \Procedure{MyProcedure}{} 
+  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
+  \State $i \gets \textit{patlen}$
+  \State \emph{top}:
+  \If {$i > \textit{stringlen}$} \Return false
+  \EndIf
+  \State $j \gets \textit{patlen}$
+  \State \emph{loop}:
+  \If {$\textit{string}(i) = \textit{path}(j)$}
+  \State $j \gets j-1$.
+  \State $i \gets i-1$.
+  \State \textbf{goto} \emph{loop}.
+  \State \textbf{close};
+  \EndIf
+  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
+  \State \textbf{goto} \emph{top}.
+  \EndProcedure
+  \end{algorithmic}
+  \end{algorithm}
+
+  [pretty picture of LRU]
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
