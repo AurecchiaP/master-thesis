@@ -7,9 +7,9 @@ In this chapter we will first explain what a B+ Tree is, how it works and what a
 
 \section{B+ Tree}\label{sec:b+tree}
 The B+ Tree is the data structure that was chosen to store the data in the geo-replicated servers. 
-But what is a B+ Tree? To answer that, let's first go over what a normal B-Tree looks like. 
+But what is a B+ Tree? To answer that, let us first go over what a normal B-Tree looks like. 
 
-A B-Tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, it's time complexities for search, insertion and deletion are still $O(log n)$.
+A B-Tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, its time complexities for search, insertion and deletion are still $O(log n)$.
 
 A B+ Tree is similar to a B-Tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+ Tree can be quite high, particularly compared to a B-Tree. In our implementation, we use a branching factor of $b=100$.
 
@@ -19,14 +19,10 @@ Say that we have a branching factor of $b$. Leaf nodes and inner nodes can have 
 
 The splitting of nodes is similar to other self-balancing trees: when a node reaches the maximum number of children allowed by the branching factor, a new node is created, and half of the children of the full node are given to the new node. Since then the new node has to be appended to the parent's children, a split may propagate up to the root of the tree.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
     \centering
     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-    \caption[The architecture of the system]{ The architecture of the system. The
-      \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-      the main Viper extension and the new debugger extension. They both interact,
-      independently, with Visual Studio Code. Viper Server is responsible for
-      running the verification backends.}
+    \caption[caption]{ }
     \label{fig:b+tree}
 \end{figure}
 
@@ -38,14 +34,10 @@ For our application, the basic B+ Tree needs to have some extra characteristics 
 First of all, each node (root, inner and leaf nodes) will store statistics based on the operations performed. In particular, each node will have two counters, one for read and one for write operations, for each group in the system. Therefore, if we have three groups, each node will have six counters. The statistics are updated from the root up to the node that handles the item accessed.
 
 [put picture that shows statistic update]
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:b+tree}
 \end{figure}
 
@@ -53,18 +45,14 @@ These statistics will be used as workload when the repartition will be executed.
 $$ current\_statistics = \alpha \cdot old\_statistics + (1-\alpha) \cdot new\_statistics $$
 Where the old statistics are the ones gathered until the past repartition, and the new statistics are the ones between the past repartition and the current one.
 [put picture that shows which are old and which are new?]
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:b+tree}
 \end{figure}
 
-Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we don't know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
+Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we do not know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
 
 The second thing that we need to store in the nodes of our B+ Tree are the partitions. In particular, we need to store both the partitions that take care of each node, and the preferred partition in case there are multiple partitions to choose from. Initially, each new node will be replicated to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the following operation on each object, until the next repartition. 
 
@@ -82,7 +70,7 @@ The simplest algorithm to implement is the one that compares all the possible co
 
 The algorithm goes top to bottom and it calculates the partitions for each node. For each node, we get the workload, that may looks as follows:
 
-\begin{table}[htb]
+\begin{table}[!htb]
   \centering
   \begin{tabular}{l l l l}
     \hline
@@ -102,7 +90,7 @@ We then proceed by looping over all possible combinations of partitions, where a
 
 Given the number of reads and writes for each group, and the current groups to which we're replicating this object, we multiply the number of reads by the latency with the closest replica that would have this object. For writes, we have to add the latency of all the replicas that have this object, since the operation is going to modify the data item.
 
-Also note that the result depends on the latency that we are currently considering: for example, if we're doing the calculations from the point of view of a replica that will not have this object, each read will have to go to a different replica; therefore we have to consider the costs from the point of view of all the replicas.
+Also note that the result depends on the latency that we are currently considering: for example, if we are doing the calculations from the point of view of a replica that will not have this object, each read will have to go to a different replica; therefore we have to consider the costs from the point of view of all the replicas.
 
 Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
 
@@ -130,11 +118,11 @@ Once we have gone over all the combinations, we pick the one with the lowest cos
   \end{algorithm}
 
 \subsection{Fixed-Size Buckets}\label{sec:fixed-size buckets}
-One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure [sotto].
+One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure ~\ref{fig:fixed-size-buckets}.
 
 As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
 
-There are also multiple ways to group things in the case where we have an odd number of levels. Since we're using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. [put pic] The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of odd levels.
+There are also multiple ways to group things in the case where we have an odd number of levels. Since we are using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. [put pic] The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of odd levels.
 
 It is also important to remember that this improvement affects only the number of objects, not the groups; therefore, in the case where we have $n$ objects and $m$ groups, this would improve on the linear number of objects $n$ but it would not affect the number of combinations, which grows as $2^m$.
 
@@ -146,15 +134,11 @@ This approach will generally work best in cases where we have a great amount of 
 [specify how many calculations we are saving?]
 
 [pic of grouped levels]
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
-  \label{fig:b+tree}
+  \caption[caption]{ }
+  \label{fig:fixed-size-buckets}
 \end{figure}
 
 \begin{algorithm}
@@ -190,15 +174,11 @@ It is also more likely for the nodes towards the leaves to be approximated, sinc
 One challenge of the variable-size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
 
 [pic of grouped levels]
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
-  \label{fig:b+tree}
+  \caption[caption]{ }
+  \label{fig:variable-size-buckets}
 \end{figure}
 
 \begin{algorithm}
@@ -225,16 +205,16 @@ One challenge of the variable-size buckets approach is to figure out when it is 
   \end{algorithm}
 
 \subsection{Hot-Groups}\label{sec:hot-groups}
-Another option is to try to reduce the number of combinations that we have to consider for each node. Since the complexity grows exponentially with the number of groups, if we're able to discard some combinations before we calculated their actual cost, then we should have a greater improvement compared to the optimizations that reduce the number of nodes.
+Another option is to try to reduce the number of combinations that we have to consider for each node. Since the complexity grows exponentially with the number of groups, if we are able to discard some combinations before we calculated their actual cost, then we should have a greater improvement compared to the optimizations that reduce the number of nodes.
 
-One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment wouldn't replicate the objects to the partition/group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
+One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment would not replicate the objects to the partition/group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
 
 The gain/cost of replicating to a group with few operations also depends on the ratio between read/write operations, obviously: with many reads we would want to assign the object to all groups, while with many writes we would want to reduce the number of group assignments, as with every write we would have to coordinate between all groups involved. In general, though, such a system is better suited for applications with more reads than writes, therefore our assumption of discarding groups with few operations still holds.
 
-The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``hot groups''). Then, when we're going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the hot groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
+The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``hot groups''). Then, when we are going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the hot groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
 
 
-\begin{table}[htb]
+\begin{table}[!htb]
   \centering
   \begin{tabular}{l l l l}
     \hline
@@ -279,7 +259,7 @@ The way to implement this is fairly simple: with the workload at hand, we find t
 This method makes use of two important characteristics that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition.
 
 \subsubsection{First Key}\label{sec:first-key}
-The first one is that as long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this won't change while our system is running, and in a real world application too it shouldn't change often, as it would mean that we either change completely a server or that we move them around. 
+The first one is that as long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this will not change while our system is running, and in a real world application too it should not change often, as it would mean that we either change completely a server or that we move them around. 
 
 This means that we may end up doing the same calculations multiple times, getting the same results each time. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
 
@@ -289,13 +269,13 @@ How do we define the key? we know that simply using the workload as the key woul
 
 These two issues could lead us to having a data structure that grows to an uncontrollable size.
 
-What we can do instead is to encode the workload in a new type of key. Remember that for each group we have a value for reads and writes. For each group, we will calculate the read write/ratio and the update ratio. The read/write ratio is just the amout of total operations for each group compared to the total number of operations for the whole node. For example, with the example workload of table[put number], we would have read write ratios of:
+What we can do instead is to encode the workload in a new type of key. Remember that for each group we have a value for reads and writes. For each group, we will calculate the read write/ratio and the update ratio. The read/write ratio is just the amout of total operations for each group compared to the total number of operations for the whole node. For example, with the example workload of table~\ref{tab:workload-example}, we would have read write ratios of:
 $$ 11/14, 3/14 $$
 
-Then we calculate the update ratio for each group, which is the ratio between reads and writes for said group. Again, with the workload of table[table] we would get:
+Then we calculate the update ratio for each group, which is the ratio between reads and writes for said group. Again, with the workload of table~\ref{tab:workload-example} we would get:
 $$1/11 2/3 $$
 
-The ratios can then be approximated to different precisions, depending on our needs. If we normalize them from 0 to 9 we would have a far smaller data structure, but it would also be a quite big approximation. 0 to 99 would give us an acceptable approximation without giving us humongous keys, as long as we don't have a lot of groups. 
+The ratios can then be approximated to different precisions, depending on our needs. If we normalize them from 0 to 9 we would have a far smaller data structure, but it would also be a quite big approximation. 0 to 99 would give us an acceptable approximation without giving us humongous keys, as long as we do not have a lot of groups. 
 
 Finally, we get the key for this workload by concatenating the values:
 $$ K = RW_1 U_1 RW_2 U_2 $$
@@ -303,7 +283,7 @@ $$ K = RW_1 U_1 RW_2 U_2 $$
 Therefore our final key, when using centile precision, would be:
 $$ K = $$
 
-\begin{table}[htb]
+\begin{table}[!htb]
   \centering
   \begin{tabular}{l l l l}
     \hline
@@ -325,18 +305,14 @@ Our workload to key encoding now gives us a fair improvement, allowing us to dis
 
 The hindsight that can help us improve on what we have is that many of those keys will never be used; for example, the key with all 0s does not represent any workload we could have. Also, even a key with a possible workload could be very unlikely and rare case, and therefore we could just not store it and just do the recalculation the few times we do encounter such a workload. 
 
-A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still don't want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time.
+A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time.
 
 [explanation of LRU, how the list works, and so on]
 [pretty picture of LRU]
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:b+tree}
 \end{figure}
 
@@ -362,40 +338,32 @@ For the last two test cases, the ones regarding the LRU caching, we perform the 
 \subsection{All Combinations}\label{sec:all-combinations}
 This scenario will be used as a benchmark to which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload, but it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently to make sure that the current partitioning matches the load of the system.
 
-As we can see in figure[figure], the performance slows down linearly in the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition quickly becomes too big, even with a relatively small tree.
-
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/all.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:all}
 \end{figure}
+
+As we can see in figure~\ref{fig:all}, the performance slows down linearly in the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition quickly becomes too big, even with a relatively small tree.
 
 \subsection{Fixed-Size Buckets Tests}\label{sec:fixed-size buckets-tests}
 This approach groups the nodes in ``buckets'' of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the one of their parent node.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/fixed.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:fixed}
 \end{figure}
 
 As expected, the time required to perform the repartitions is much less compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes, 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the only valid reason to use this approach is when the time of repartition is of much greater importance compared to the its precision.
 
 % pic that shows different partitions?
-% \begin{figure}[htb]
+% \begin{figure}[!htb]
 %   \centering
 %   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-%   \caption[The architecture of the system]{ The architecture of the system. The
+%   \caption[caption]{ caption. The
 %     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
 %     the main Viper extension and the new debugger extension. They both interact,
 %     independently, with Visual Studio Code. Viper Server is responsible for
@@ -408,14 +376,10 @@ This approach is slightly more refined compared to the fixed-size approach, ther
 
 For this method we also have to define a threshold value that is used to decide when it is worth computing the combinations for a node and when it is not. For our tests, we used as a threshold value $THRESHOLD = 0.8$, which means that if a node accounts for at least 80\% of the average expected workload of a single child node, then we will peform its calculations. The value given to this variable is a ``safe'' chosen mostly based on previous results and we don't expect it to be ideal by any mean; still, it should be good enough to show the behavior of this approach.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/dynamic.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:dynamic}
 \end{figure}
 
@@ -426,14 +390,10 @@ The hot-groups approach aims at discarding combinations of groups, rather than n
 
 Like in the variable-buckets case, we have a threshold variable. This time it is used to decide if we should discard a group or not. We set the variable to $0.1$, which means that if a group has less than 10\% the statistics of the group with the most statistics of this node, then we will discard it. It is important to notice that the partitions assignment also depends on the ratio of reads and writes. We could use more complicate ways to calculate the threshold, taking into account the read/write ratio as well, but we preferred to keep the number of variables as little as possible to avoid complicating the tests.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/hot.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
+  \caption[caption]{ }
   \label{fig:hot}
 \end{figure}
 
@@ -442,30 +402,52 @@ In this case the results of the tests are as expected; when compared to the all-
 Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is half compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
 
 \subsection{LRU Caching Tests}\label{sec:lru-caching-tests}
-
 As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the all-combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
 
-\begin{figure}[htb]
+For this test, we decided to use a cache size of 1'000'000. Obviously a bigger cache would further allow improvements on the performance, at the cost of an increased load on the memory. With this cache size, we reached a usage of approximately 450MB.
+
+\begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/LRU_8.png}
+  \caption[caption]{ }
+  \label{fig:LRU_8}
 \end{figure}
 
-\subsection{LRU with Hot-Groups}\label{sec:lru-hot-groups}
+The results seem really good: in 100 repartitions the computation time to $\frac{1}{10}$ of what it was initially, going below 10 seconds in the best cases. While 10 seconds is still a lot of time, we can be sure that even longer amounts of repartitions will boost the performance even more. 
 
-We will now test the performance of the LRU combined with the Hot-Groups approach; the idea is that the Hot-Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the hot-groups.
+It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
+
+\newpage
+\subsection{LRU with Hot-Groups}\label{sec:lru-hot-groups}
+We will now test the performance of the LRU combined with the Hot-Groups approach; the idea is that the Hot-Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the hot-groups. 
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/LRU_8_hot.png}
+  \caption[caption]{ }
+  \label{fig:LRU_8_hot}
+\end{figure}
 
 \subsection{Results Evaluation}\label{sec:results-evaluation}
+Based on the results, we can draw some conclusions on the quality of the various methods compared against each others. 
+
+The all-combinations approach gives us the optimal partition assignments to obtain minimum average latency, but in the case of a repartition of relevant size the time it takes is definitely too long. the combinations with 8 groups take from 10.5 to 105 seconds; we definitely cannot stop execution for that long, unless we perform repartitions very rarely.
+
+The fixed-size buckets approach is on the other end of the spectrum; really short computation times, but it leads to great approximations in the repartition. Still, with the 8 groups, 1 million items workload, the repartition time was 2 seconds compared to 105, so it looks at least usable as a starting approach.
+
+The variable-size buckets turned out to be rather disappointing; computation times slightly better than the all-combinations, but a number of ``wrong'' assignments comparable to the fixed approach. We still believe that it was a bad test case for this method; perhaps different loads and different tresholds would lead to better results. Yet, we cannot feel encouraged to use this method given the results we have at hand.
+
+The last computation optimization, the hot groups, performed quite well. In particular, the computational times with 8 groups are less than half compared to the all-combinations, which is a nice improvement, and the number of wrong assignments is half of the fixed-size buckets. In general, it looks like the most balanced optimization.
+
+The results get interesting when paired with the caching system. Even with the slowest computation method, the biggest workload goes from 105 seconds to less than 10 seconds in just 100 repartitions. When paired with a faster computation method, like hot-groups, it goes even below 5 seconds. 
+
+In conclusion, it looks like the way to go is definitely by exploting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
+
 
 \section{GeoPaxos Tests}\label{sec:geopaxos-tests}
-
+Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations.
 \subsection{Tests Setup}\label{sec:tests-setup}
-Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations. Although it is quite hard to even come up with tests that could be realistic, we believe that the tests performed should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
+It is quite hard to even come up with tests that give us realistic workloads, but we believe that the tests performed should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
 
 The tests have a range of variables to be set, including:
 \begin{itemize}
@@ -476,28 +458,28 @@ The tests have a range of variables to be set, including:
   \item \textbf{Maximum throughput (msgs/s)} The maximum number of messages that a client can send in a second
   \item \textbf{Range of operations} The interval of keys that the client is going to perform operations on. This usually corresponds to the total number of items, but the beginning and end of the range will be shifted depending on the region of the client
   \item \textbf{Ratio of operations} The ratio of read and write operations performed by the client
-  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure[])
+  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure ~\ref{fig:skews})
 \end{itemize}
 
 All the clients behave in the same way. Once started, they send messages to the replica that they are connected to (at a rate depending on the variables defined above), and waits for the replies. There are some possible behaviors of clients that may not seem important at first, but that are quite important to keep under control to avoid unexpected or unwanted results from the tests.
 
-One interesting such case happens when a client, because of a period with a high throughput, has a repartition that puts a lot of objects in the region where he is at. This leads to his operations having even lower latency than before, which leads to even higher throughput than before, leading to a situation where he will be the most performant client exactly because it was performant in the past (``the rich get richer''). To handle this, we have two variables: the maximum throughput, that makes it so that after a certain point, the client cannot send more messages than a certain threshold, stopping him from ``getting richer''. Furthermore, we can increase the number of outstanding messages; while this sounds counterintuitive, having a higher outstanding limit allows slower clients to send more messages without having to wait for replies of past messages, limiting the gap between fast and slow clients. Both these settings (maximum throughput and oustading messages) could be realistic behaviours, too: common clients may not have the fastest internet speed, therefore limiting their maximum throughput, and not all requests may be dependent on each other, therefore a client won't have to wait a reply for all messages before sending new ones.
+One interesting such case happens when a client, because of a period with a high throughput, has a repartition that puts a lot of objects in the region where he is at. This leads to his operations having even lower latency than before, which leads to even higher throughput than before, leading to a situation where he will be the most performant client exactly because it was performant in the past (``the rich get richer''). To handle this, we have two variables: the maximum throughput, that makes it so that after a certain point, the client cannot send more messages than a certain threshold, stopping him from ``getting richer''. Furthermore, we can increase the number of outstanding messages; while this sounds counterintuitive, having a higher outstanding limit allows slower clients to send more messages without having to wait for replies of past messages, limiting the gap between fast and slow clients. Both these settings (maximum throughput and oustading messages) could be realistic behaviours, too: common clients may not have the fastest internet speed, therefore limiting their maximum throughput, and not all requests may be dependent on each other, therefore a client will not have to wait a reply for all messages before sending new ones.
 
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
   \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha05.png}
   \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha0.png}
-  \caption[The architecture of the system]{ maybe add the smooth skew? }
-  \label{fig:b+tree}
+  \caption[caption]{ maybe add the smooth skew? }
+  \label{fig:skews}
 \end{figure}
 
 Note that the zipf skew used in the tests is a slightly modified one, which we call ``smooth skew'', which is simply a skew that is mirrored after the peak point of the curve. This is because otherwise, there would be a really big difference in load between the maximum point of the curve and the minimum one, even though from a key point of view they are off by one.
 
-The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90,95,99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups; the tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos[cite] while it was been tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were pretty similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in table[cite]. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
+The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90,95,99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups; the tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos[cite] while it was been tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were pretty similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in table~\ref{tab:latencies}. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
 
 
-\begin{table}[htb]
+\begin{table}[!htb]
   \centering
   \begin{tabular}{l l l l}
     \hline
@@ -515,34 +497,34 @@ The particular setups that we will test are four types of client behaviors, that
 
 
 \subsection{local-skewed}\label{sec:local-skewed}
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[The architecture of the system]{ [put the right picture] }
+  \caption[caption]{ [put the right picture] }
   \label{fig:b+tree}
 \end{figure}
 \newpage
 \subsection{global-skewed}\label{sec:global-skewed}
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[The architecture of the system]{ [put the right picture] }
+  \caption[caption]{ [put the right picture] }
   \label{fig:b+tree}
 \end{figure}
 \newpage
 \subsection{constant}\label{sec:constant}
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[The architecture of the system]{ [put the right picture] }
+  \caption[caption]{ [put the right picture] }
   \label{fig:b+tree}
 \end{figure}
 \newpage
 \subsection{variable}\label{sec:variable}
-\begin{figure}[htb]
+\begin{figure}[!htb]
   \centering
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[The architecture of the system]{ [put the right picture] }
+  \caption[caption]{ [put the right picture] }
   \label{fig:b+tree}
 \end{figure}

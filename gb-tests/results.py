@@ -37,6 +37,8 @@ if op == "tp":
     if len(sys.argv) > 4:
         print(grouped['#ORDER'])
         plt.plot(grouped)
+        plt.legend()
+        plt.tight_layout()
         plt.show()
 
     discarded = grouped[5:len(grouped) - 5]  # sub the first and last 15 seconds
@@ -46,7 +48,17 @@ if op == "tp":
 
 elif op == "skew":
     lines = [int(line.rstrip('\n')) for line in open(srcdir)]
+    # lines1 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_100000.txt")]
+    # lines2 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_500000.txt")]
+    # lines3 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_1000000.txt")]
+    plt.xlabel('Key')
+    plt.ylabel('Frequency')
+    # plt.plot(lines1, label='100\'000 Items')
+    # plt.plot(lines2, label='500\'000 Items')
+    # plt.plot(lines3, label='1\'000\'000 Items')
     plt.plot(lines)
+    # plt.legend()
+    plt.tight_layout()
     plt.show()
 elif op == "lat":
     df = pd.concat(df_list)
@@ -78,4 +90,6 @@ elif op == "lat":
     if len(sys.argv) > 4:
         plt.plot(bin_edges[0:-1], cdf)
         plt.ylim((0, 1))
+        plt.legend()
+        plt.tight_layout()
         plt.show()
