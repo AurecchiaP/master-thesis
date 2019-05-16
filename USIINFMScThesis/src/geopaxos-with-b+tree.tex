@@ -22,7 +22,7 @@ The splitting of nodes is similar to other self-balancing trees: when a node rea
 \begin{figure}[!htb]
     \centering
     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-    \caption[caption]{ }
+    \caption[caption]{ An example of B+ Tree with a branching factor of $b=4$. We have a root node that acts as an inner node, meaning that its children are nodes themselves. The children nodes are leaf nodes, with their children being the actual objects that are being stored. }
     \label{fig:b+tree}
 \end{figure}
 
@@ -31,25 +31,24 @@ The splitting of nodes is similar to other self-balancing trees: when a node rea
 \subsection{B+ Tree Implementation}\label{sec:b+tree-implementation}
 For our application, the basic B+ Tree needs to have some extra characteristics added to it. 
 
-First of all, each node (root, inner and leaf nodes) will store statistics based on the operations performed. In particular, each node will have two counters, one for read and one for write operations, for each group in the system. Therefore, if we have three groups, each node will have six counters. The statistics are updated from the root up to the node that handles the item accessed.
+First of all, each node (root, inner and leaf nodes) will store statistics based on the operations performed. In particular, each node will have two counters, one for read and one for write operations, for each group in the system. Therefore, if we have three groups, each node will have six counters. The statistics are updated from the root up to the node that handles the item accessed. 
 
-[put picture that shows statistic update]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[caption]{ }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree_path.png}
+  \caption[caption]{ When an operation on \emph{some object} is performed, we update the statistics on all the nodes on the path to the object. In this example, if we perform a read on said object, we increase the reads counter on both the red nodes.}
+  \label{fig:b+tree_path}
 \end{figure}
 
 These statistics will be used as workload when the repartition will be executed. Once the repartition is performed, the statistics will be updated with the formula:
 $$ current\_statistics = \alpha \cdot old\_statistics + (1-\alpha) \cdot new\_statistics $$
 Where the old statistics are the ones gathered until the past repartition, and the new statistics are the ones between the past repartition and the current one.
-[put picture that shows which are old and which are new?]
+
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[caption]{ }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/statistics.png}
+  \caption[caption]{An example of how the statistics are updated for each node after every repartition, with $alpha = 0.5$. Before the first repartition we have 760 operations on the objects handled by this node. When the first repartition is issued, we calculate the current statistics using the old and new statistics. For the second repartition, the previous current statistics will become the old statistics, and the new statistics will be the ones performed between the first and second repartition. }
+  \label{fig:statistics}
 \end{figure}
 
 Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we do not know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
@@ -117,8 +116,8 @@ Once we have gone over all the combinations, we pick the one with the lowest cos
   \end{algorithmic}
   \end{algorithm}
 
-\subsection{Fixed-Size Buckets}\label{sec:fixed-size buckets}
-One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure ~\ref{fig:fixed-size-buckets}.
+\subsection{Fixed-Size Buckets}\label{sec:Fixed-Size buckets}
+One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure ~\ref{fig:Fixed-Size-buckets}.
 
 As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
 
@@ -136,9 +135,9 @@ This approach will generally work best in cases where we have a great amount of 
 [pic of grouped levels]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
   \caption[caption]{ }
-  \label{fig:fixed-size-buckets}
+  \label{fig:Fixed-Size-buckets}
 \end{figure}
 
 \begin{algorithm}
@@ -164,21 +163,21 @@ This approach will generally work best in cases where we have a great amount of 
   \end{algorithmic}
   \end{algorithm}
 
-\subsection{Variable-Size Buckets}\label{sec:variable-size buckets}
-The idea of the fixed-size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+ Tree. 
+\subsection{Variable-Size Buckets}\label{sec:Variable-Size buckets}
+The idea of the Fixed-Size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+ Tree. 
 
 An alternative approach is to to have a variable, or dynamic, size of buckets. The idea is to group in two or more levels the nodes that have a low amount of statistics, and instead do the optimal calculations for the nodes with many operations associated to them. The idea is that approximating the nodes with few operations would not hinder the performance by much, as the object associated to those nodes will not be accessed often by the clients, while instead the objects that are used often will have their optimal partitions.
 
 It is also more likely for the nodes towards the leaves to be approximated, since the parents will have the aggregated statistics of all their children.
 
-One challenge of the variable-size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
+One challenge of the Variable-Size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
 
 [pic of grouped levels]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
   \caption[caption]{ }
-  \label{fig:variable-size-buckets}
+  \label{fig:Variable-Size-buckets}
 \end{figure}
 
 \begin{algorithm}
@@ -204,14 +203,14 @@ One challenge of the variable-size buckets approach is to figure out when it is 
   \end{algorithmic}
   \end{algorithm}
 
-\subsection{Hot-Groups}\label{sec:hot-groups}
+\subsection{Hot Groups}\label{sec:hot-groups}
 Another option is to try to reduce the number of combinations that we have to consider for each node. Since the complexity grows exponentially with the number of groups, if we are able to discard some combinations before we calculated their actual cost, then we should have a greater improvement compared to the optimizations that reduce the number of nodes.
 
 One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment would not replicate the objects to the partition/group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
 
 The gain/cost of replicating to a group with few operations also depends on the ratio between read/write operations, obviously: with many reads we would want to assign the object to all groups, while with many writes we would want to reduce the number of group assignments, as with every write we would have to coordinate between all groups involved. In general, though, such a system is better suited for applications with more reads than writes, therefore our assumption of discarding groups with few operations still holds.
 
-The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``hot groups''). Then, when we are going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the hot groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
+The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``Hot Groups''). Then, when we are going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the Hot Groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
 
 
 \begin{table}[!htb]
@@ -256,10 +255,10 @@ The way to implement this is fairly simple: with the workload at hand, we find t
 
 \subsection{LRU Caching}\label{sec:lru-caching}
 [maybe start with a complete description, then go bit by bit]
-This method makes use of two important characteristics that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition.
+This method makes use of two important aspects that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition. The first one is given two identical workloads, the partitions assignment will be the same, which means that we can in theory cache the results. The second one is that of all the possible combinations of workloads, most of them are very unlikely to be met during execution.
 
-\subsubsection{First Key}\label{sec:first-key}
-The first one is that as long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this will not change while our system is running, and in a real world application too it should not change often, as it would mean that we either change completely a server or that we move them around. 
+\subsubsection{Reusability of computations}\label{sec:Reusability-of-computations}
+As long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this will not change while our system is running, and in a real world application too it should not change often, as it would mean that we either change completely a server or that we move them around. 
 
 This means that we may end up doing the same calculations multiple times, getting the same results each time. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
 
@@ -297,10 +296,9 @@ $$ K = $$
 \end{table}
 
 
-[is there another issue? forgot]
+[is there another issue?]
 
-\subsubsection{Second Key}\label{sec:second-key}
-
+\subsubsection{Workloads Combinations}\label{sec:Workloads-combinations}
 Our workload to key encoding now gives us a fair improvement, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even that big. We then have to further limit the number of keys. 
 
 The hindsight that can help us improve on what we have is that many of those keys will never be used; for example, the key with all 0s does not represent any workload we could have. Also, even a key with a possible workload could be very unlikely and rare case, and therefore we could just not store it and just do the recalculation the few times we do encounter such a workload. 
@@ -347,17 +345,17 @@ The newly inserted item will then be added to the map, and the $List_value$ will
   [pretty picture of LRU]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-  \caption[caption]{ }
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{placeholder}
   \label{fig:b+tree}
 \end{figure}
 
 \subsubsection{LRU Warmup}\label{sec:warmup}
 The main issue of using an LRU-style caching is that initially, the performance will be as bad as having no optimization at all. This is because until we actually have any previous calculation cached, we will still have to do all the calculations one by one. 
 
-One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better gains. For example, we can use the hot groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The hot groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the hot groups optimization would still be useful when we have a cache miss.
+One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better gains. For example, we can use the Hot Groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The Hot Groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the Hot Groups optimization would still be useful when we have a cache miss.
 
-A possible flaw of this approach is that if one of our optimizations makes use of important approximations, then the values we store in our cache might be far from optimal; therefore, we have to be careful not to exaggerate with the approaches used. This could also be approached in a hybrid way; it is possible to use the approximation methods while the cache is empty, so that we speed up the first repartitions. Then, once the cache is full enough, we can start using the all-combinations method whenever we have a cache-miss, so that we can start using the optimal values without having a noticeable impact on the performance of the system.
+A possible flaw of this approach is that if one of our optimizations makes use of important approximations, then the values we store in our cache might be far from optimal; therefore, we have to be careful not to exaggerate with the approaches used. This could also be approached in a hybrid way; it is possible to use the approximation methods while the cache is empty, so that we speed up the first repartitions. Then, once the cache is full enough, we can start using the All-Combinations method whenever we have a cache-miss, so that we can start using the optimal values without having a noticeable impact on the performance of the system.
 
 Lastly, another alternative solution to manage the bad performance of a cold LRU is to pre-load the LRU. As long as the system remains the same, we know that the cached values will still be valid. Therefore we can either store the LRU data from a previous execution, so that we can reload it before the next one, or we can pre-compute some entries of the LRU before any execution, for example entries that we expect to be likely found in our application. This would greatly reduce the drawbacks of a slow start.
 
@@ -371,81 +369,91 @@ We start each test by inserting in the B+ Tree a number of new values equal to $
 
 For the last two test cases, the ones regarding the LRU caching, we perform the test differently, since it is a different type of optimization; we do the setup part of the test as before, but we repeat the part of performing operations and repartitioning one hundred times. This is because the LRU is an extra feature that can be paired with any of the previous algorithms, and its usefulness only shows once we have performed multiple repartitions.
 
-\subsection{All Combinations}\label{sec:all-combinations}
+[put picture that shows client loads/skews during tests]
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/all.png}
+  \caption[caption]{The performance of the All-Combinations method with different groups and items number.}
+  \label{fig:all}
+\end{figure}
+
+\subsection{All-Combinations}\label{sec:All-Combinations}
 This scenario will be used as a benchmark to which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload, but it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently to make sure that the current partitioning matches the load of the system.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/all.png}
-  \caption[caption]{ }
+  \caption[caption]{The performance of the All-Combinations method with different groups and items number.}
   \label{fig:all}
 \end{figure}
 
 As we can see in figure~\ref{fig:all}, the performance slows down linearly in the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition quickly becomes too big, even with a relatively small tree.
 
-\subsection{Fixed-Size Buckets Tests}\label{sec:fixed-size buckets-tests}
+\subsection{Fixed-Size Buckets Tests}\label{sec:Fixed-Size buckets-tests}
 This approach groups the nodes in ``buckets'' of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the one of their parent node.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/fixed.png}
-  \caption[caption]{ }
+  \caption[caption]{The performance of the Fixed-Size Buckets method with different groups and items number.}
   \label{fig:fixed}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partition_difference_fixed_all.png}
+  \caption[caption]{The difference in partitions assignment between All-Combinations and Fixed-Size. The All-Combinations method shows higher variability in the key ranges where we have many operations from multiple groups. On the other hand, the Fixed-Size approach is more constant, since it decides the partitions based on aggregated statistics.}
+  \label{fig:hot}
 \end{figure}
 
 As expected, the time required to perform the repartitions is much less compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes, 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the only valid reason to use this approach is when the time of repartition is of much greater importance compared to the its precision.
 
-% pic that shows different partitions?
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/b+tree.png}
-%   \caption[caption]{ caption. The
-%     \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-%     the main Viper extension and the new debugger extension. They both interact,
-%     independently, with Visual Studio Code. Viper Server is responsible for
-%     running the verification backends.}
-%   \label{fig:b+tree}
-% \end{figure}
-
-\subsection{Variable-Size Buckets Tests}\label{sec:variable-size buckets-tests}
-This approach is slightly more refined compared to the fixed-size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the fixed-size, we would expect the timings to be worse than the previous approach but still better than the all combinations one. We would also expect to see better partitions assignments.
+\subsection{Variable-Size Buckets Tests}\label{sec:Variable-Size-buckets-tests}
+This approach is slightly more refined compared to the Fixed-Size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the Fixed-Size, we would expect the timings to be worse than the previous approach but still better than the All-Combinations one. We would also expect to see better partitions assignments.
 
 For this method we also have to define a threshold value that is used to decide when it is worth computing the combinations for a node and when it is not. For our tests, we used as a threshold value $THRESHOLD = 0.8$, which means that if a node accounts for at least 80\% of the average expected workload of a single child node, then we will peform its calculations. The value given to this variable is a ``safe'' chosen mostly based on previous results and we don't expect it to be ideal by any mean; still, it should be good enough to show the behavior of this approach.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/dynamic.png}
-  \caption[caption]{ }
+  \caption[caption]{The performance of the Fixed-Size Buckets method with different groups and items number.}
   \label{fig:dynamic}
 \end{figure}
 
-Based on the results, this approach does not perform as well as expected: the performance is slightly better than the all-combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the fixed approach rather than the variable-size one.
+Based on the results, this approach does not perform as well as expected: the performance is slightly better than the All-Combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the fixed approach rather than the Variable-Size one.
 
-\subsection{Hot-Groups Tests}\label{sec:hot-groups-tests}
-The hot-groups approach aims at discarding combinations of groups, rather than nodes like the previous ones. This means that we expect to see an increasing gain in performance once we increase the number of groups. In general we expect this group to perform similar to the all-combinations method in the case with few groups, but we should also have a much more linear increment in time with the tests with more groups. We should also get better partition assignments compared to the buckets approaches, since we expect the heuristic of discarding groups to be more reliable than the ones used previously.
+\subsection{Hot Groups Tests}\label{sec:hot-groups-tests}
+The Hot Groups approach aims at discarding combinations of groups, rather than nodes like the previous ones. This means that we expect to see an increasing gain in performance once we increase the number of groups. In general we expect this group to perform similar to the All-Combinations method in the case with few groups, but we should also have a much more linear increment in time with the tests with more groups. We should also get better partition assignments compared to the buckets approaches, since we expect the heuristic of discarding groups to be more reliable than the ones used previously.
 
 Like in the variable-buckets case, we have a threshold variable. This time it is used to decide if we should discard a group or not. We set the variable to $0.1$, which means that if a group has less than 10\% the statistics of the group with the most statistics of this node, then we will discard it. It is important to notice that the partitions assignment also depends on the ratio of reads and writes. We could use more complicate ways to calculate the threshold, taking into account the read/write ratio as well, but we preferred to keep the number of variables as little as possible to avoid complicating the tests.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/hot.png}
-  \caption[caption]{ }
+  \caption[caption]{The performance of the Fixed-Size Buckets method with different groups and items number.}
   \label{fig:hot}
 \end{figure}
 
-In this case the results of the tests are as expected; when compared to the all-combinations case, we see that the performance in the tests with 3 groups are very similar, with the hot-groups approach taking around 10-20\% less time. When we move onto 4 and 8 groups though the improvement is much more noticeable, with improvements in the order of 30-40\% and up to 65\% respectively.
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partition_difference_hot_all.png}
+  \caption[caption]{The difference in partitions assignment between All-Combinations and Hot Groups. The differences are mostly in the number of partitions that the nodes are assigned to; The All-Combinations approach assigns the nodes to multiple partitions more often than the Hot Groups. This is because Hot Groups discards the groups with few operations, therefore not considering the partitionings with multiple groups.}
+  \label{fig:hot}
+\end{figure}
+
+In this case the results of the tests are as expected; when compared to the All-Combinations case, we see that the performance in the tests with 3 groups are very similar, with the Hot Groups approach taking around 10-20\% less time. When we move onto 4 and 8 groups though the improvement is much more noticeable, with improvements in the order of 30-40\% and up to 65\% respectively.
 
 Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is half compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
 
 \subsection{LRU Caching Tests}\label{sec:lru-caching-tests}
-As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the all-combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
+As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the All-Combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
 
 For this test, we decided to use a cache size of 1'000'000. Obviously a bigger cache would further allow improvements on the performance, at the cost of an increased load on the memory. With this cache size, we reached a usage of approximately 450MB.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/LRU_8.png}
-  \caption[caption]{ }
+  \caption[caption]{The time required for 100 subsequent repartitions using the LRU and the All-Combinations method. The performance improves greatly once the LRU cache gets filled. }
   \label{fig:LRU_8}
 \end{figure}
 
@@ -454,28 +462,31 @@ The results seem really good: in 100 repartitions the computation time to $\frac
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
 \newpage
-\subsection{LRU with Hot-Groups}\label{sec:lru-hot-groups}
-We will now test the performance of the LRU combined with the Hot-Groups approach; the idea is that the Hot-Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the hot-groups. 
+\subsection{LRU with Hot Groups}\label{sec:lru-hot-groups}
+We will now test the performance of the LRU combined with the Hot Groups approach; the idea is that the Hot Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the Hot Groups. 
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/LRU_8_hot.png}
-  \caption[caption]{ }
+  \caption[caption]{The time required for 100 subsequent repartitions using the LRU and the Hot Groups method. The shape of the plots is similar to the one with All-Combinations, but all the curves are lower, meaning that this always takes less time than the previous one, at the cost of precision.}
   \label{fig:LRU_8_hot}
 \end{figure}
+
+The results are in line with our expectations; the timing are consistently lower than the previous LRU test, both at the beginning and at the end. The percentage decrease in computation time is similar to the percentage decrease we saw without the LRU.
 
 \subsection{Results Evaluation}\label{sec:results-evaluation}
 Based on the results, we can draw some conclusions on the quality of the various methods compared against each others. 
 
-The all-combinations approach gives us the optimal partition assignments to obtain minimum average latency, but in the case of a repartition of relevant size the time it takes is definitely too long. the combinations with 8 groups take from 10.5 to 105 seconds; we definitely cannot stop execution for that long, unless we perform repartitions very rarely.
+The All-Combinations approach gives us the optimal partition assignments to obtain minimum average latency, but in the case of a repartition of relevant size the time it takes is definitely too long. the combinations with 8 groups take from 10.5 to 105 seconds; we definitely cannot stop execution for that long, unless we perform repartitions very rarely.
 
-The fixed-size buckets approach is on the other end of the spectrum; really short computation times, but it leads to great approximations in the repartition. Still, with the 8 groups, 1 million items workload, the repartition time was 2 seconds compared to 105, so it looks at least usable as a starting approach.
+The Fixed-Size buckets approach is on the other end of the spectrum; really short computation times, but it leads to great approximations in the repartition. Still, with the 8 groups, 1 million items workload, the repartition time was 2 seconds compared to 105, so it looks at least usable as a starting approach.
 
-The variable-size buckets turned out to be rather disappointing; computation times slightly better than the all-combinations, but a number of ``wrong'' assignments comparable to the fixed approach. We still believe that it was a bad test case for this method; perhaps different loads and different tresholds would lead to better results. Yet, we cannot feel encouraged to use this method given the results we have at hand.
+The Variable-Size buckets turned out to be rather disappointing; computation times slightly better than the All-Combinations, but a number of ``wrong'' assignments comparable to the fixed approach. We still believe that it was a bad test case for this method; perhaps different loads and different tresholds would lead to better results. Yet, we cannot feel encouraged to use this method given the results we have at hand.
 
-The last computation optimization, the hot groups, performed quite well. In particular, the computational times with 8 groups are less than half compared to the all-combinations, which is a nice improvement, and the number of wrong assignments is half of the fixed-size buckets. In general, it looks like the most balanced optimization.
+The last computation optimization, the Hot Groups, performed quite well. In particular, the computational times with 8 groups are less than half compared to the All-Combinations, which is a nice improvement, and the number of wrong assignments is half of the Fixed-Size buckets. In general, it looks like the most balanced optimization.
 
-The results get interesting when paired with the caching system. Even with the slowest computation method, the biggest workload goes from 105 seconds to less than 10 seconds in just 100 repartitions. When paired with a faster computation method, like hot-groups, it goes even below 5 seconds. 
+The results get interesting when paired with the caching system. Even with the slowest computation method, the biggest workload goes from 105 seconds to less than 10 seconds in just 100 repartitions. When paired with a faster computation method, like Hot Groups, it goes even below 3 seconds. As a matter of fact, when we tried with 1000 repartitions, at the 500th one the time was around 1 second, plateauing at around 600, with around 950ms on average, and a memory usage of 1GB.
+By comparison, the one without Hot Groups reached a plateau at 400 repartitions, with an approximate time of 2-2.5 seconds per repartition.
 
 In conclusion, it looks like the way to go is definitely by exploting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
 
@@ -503,12 +514,14 @@ One interesting such case happens when a client, because of a period with a high
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha05.png}
-  \includegraphics[width=0.32\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha0.png}
-  \caption[caption]{ maybe add the smooth skew? }
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha05.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha0.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1smooth.png}
+  \caption[caption]{ The four plots show the different skew distributions using different alpha values. Top-left: $alpha = 1$, Top-right: $alpha = 0.5$, Bottom-left: $alpha = 0$, Bottom-right: $alpha = 1$ with smooth setting. The first three are quite self-explanatory, with the curve getting flatter and flatter the more we get close to zero. With the smooth curve it is important to notice that we are cutting the original curve in half, therefore the distribution will look slightly different compared to a non-smooth one with the same alpha.}
   \label{fig:skews}
 \end{figure}
+
 
 Note that the zipf skew used in the tests is a slightly modified one, which we call ``smooth skew'', which is simply a skew that is mirrored after the peak point of the curve. This is because otherwise, there would be a really big difference in load between the maximum point of the curve and the minimum one, even though from a key point of view they are off by one.
 
@@ -529,7 +542,7 @@ The particular setups that we will test are four types of client behaviors, that
   \caption{The latencies used in our local cluster of machines used to simulate geographically distant datacenters, placed in Ireland(EU), California(CA) and Tokyo(JP).}\label{tab:latencies}
 \end{table}
 
-[put image from GeoPaxos that shows replicas and latencies]
+[put image similar to GeoPaxos that shows replicas and latencies]
 
 
 \subsection{local-skewed}\label{sec:local-skewed}
@@ -559,8 +572,7 @@ The particular setups that we will test are four types of client behaviors, that
 \subsection{variable}\label{sec:variable}
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
   \caption[caption]{ [put the right picture] }
   \label{fig:b+tree}
 \end{figure}

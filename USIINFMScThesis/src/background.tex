@@ -4,7 +4,6 @@ In this section we will go over some of the fundamentals of distributed systems 
 We will first give a brief introduction to the main challenges of working in distributed environments. Then we will discuss a fundamental problem of distributed systems known as Consensus, followed by the description of one of the most popular algorithms used to solve Consensus in distributed settings, called Paxos. Lastly we will introduce GeoPaxos, an improvement over Paxos which aims to provide better performance in geo-distributed environments.
 
 \section{Distributed Systems}\label{sec:Distributed Systems}
-
 Distributed systems can be encountered in a multitude of situations in our everyday lives, and their importance is growing every year: Entertainment services such as music and video streaming services, banks, hospitals, social medias, web engines are just a few of the many types of distributed systems that we use on a daily basis, and each of these may have different challenges and needs when it comes to handling distribution.
 
 Even a clear definition of a distributed system is hard to find. In general, we can describe it as a collection of indipendent machines that communicate and coordinate their work to provide a certain service to its users: to them, the system should appear as a single and homogeneous entity, hiding its distributed nature.
@@ -30,6 +29,8 @@ Some types of failure models can be:
 \end{itemize}
 
 Again, the choice of the failure model gives us different degrees of difficulty: a failstop model makes the problem easier to solve, but a system that is able to tolerate byzantine failures is going to be much more resiliant to failures.
+
+\section{Distributed Data Structures}\label{sec:distributed-data-structures}
 
 \section{State Machine Replication}\label{sec:state-machine-replication}
 State Machine Replication (SMR) is a fundamental aspect of distributed systems. When we have a multitude of servers that different clients can access, for example, we usually want the state of the servers to be coherent and cosistent among themselves. A way to achieve this is with SMR. By having operations that are deterministic, and imposing an order on the operations (more or less strict depending on the operations themselves and the specific system), it is possible to maintain a consistent state on the different servers. Lamport was the first to introduce SMR[on "Using Time Instead of Timeout In Distributed Systems"].
@@ -149,7 +150,7 @@ The pseudo-code for the phases is as follows:[placeholder]
 
 \begin{figure}[htb]
 \centering
-\includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/paxos.png}
+\includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
 
 \caption[The architecture of the system]{ The architecture of the system. The
   \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,

@@ -48,13 +48,13 @@ if op == "tp":
 
 elif op == "skew":
     lines = [int(line.rstrip('\n')) for line in open(srcdir)]
-    # lines1 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_100000.txt")]
-    # lines2 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_500000.txt")]
+    # lines1 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_fixedbucket_assigns.txt")]
+    # lines2 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_all_assigns.txt")]
     # lines3 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_1000000.txt")]
     plt.xlabel('Key')
     plt.ylabel('Frequency')
-    # plt.plot(lines1, label='100\'000 Items')
-    # plt.plot(lines2, label='500\'000 Items')
+    # plt.plot(lines1, label='Fixed-Size Bucket')
+    # plt.plot(lines2, label='All Combinations')
     # plt.plot(lines3, label='1\'000\'000 Items')
     plt.plot(lines)
     # plt.legend()
