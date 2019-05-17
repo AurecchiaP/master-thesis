@@ -39,11 +39,11 @@ The basic idea comes from State Machines, which can be defined by sets of states
 
 \section{Consensus}\label{sec:Consensus}
 
-The problem of consensus is a fundamental problem in distributed systems: it was first introduced in the early 80s \cite[]{Pease}, \cite[]{Lamport} and since then it remained important in most distributed environment, ranging from more classical server applications to the more recent Blockchains.
+The problem of Consensus is a fundamental problem in distributed systems: it was first introduced in the early 80s [Pease], [Lamport] and since then it remained important in most distributed environment, ranging from more classical server applications to the more recent Blockchains.
 
-Consensus is basically an agreement problem: the goal is to have a set of entities reach an agreement on a value that was previously proposed by (at least) one of those entitities. This definition is quite general, and for a good reason: depending on the different assumptions we make on the system model, there are stronger and weaker types of consensus that can be achieved. 
+Consensus is basically an agreement problem: the goal is to have a set of entities reach an agreement on a value that was previously proposed by (at least) one of those entitities. This definition is quite general, and for a good reason: depending on the different assumptions we make on the system model, there are stronger and weaker types of Consensus that can be achieved. 
 
-The three core properties of a consensus protocol are the following:
+The three core properties of a Consensus protocol are the following:
 
 \begin{itemize}
     \item \textbf{Termination} Eventually every correct process decides on one value
@@ -55,21 +55,17 @@ The three core properties of a consensus protocol are the following:
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/consensus.png}
 
-  \caption[The architecture of the system]{ The architecture of the system. The
-    \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-    the main Viper extension and the new debugger extension. They both interact,
-    independently, with Visual Studio Code. Viper Server is responsible for
-    running the verification backends.}
-  \label{fig:consensus}
+  \caption[The architecture of the system]{ The Consensus problem: $n$ processes, which are the participating proposers, can proposer a value. After Consensus is reached, the processes will know the decided value, in this case $v'$, which had to be proposed by one of the processes. }
+  \label{fig:Consensus}
 \end{figure}
 
-In this section we will go over some of the more relevant types of consensus, and respective implementations that are able to achieve consensus in the given system models.
+In this section we will go over some of the more relevant types of Consensus, and respective implementations that are able to achieve Consensus in the given system models.
 
 
 \subsection{Synchronous model}\label{sec:Synchronous model}
-In a synchronous system model, consensus is quite straightforward to achieve. Let us assume to have a set of $n$ processes, that will be the entities that want to reach a common agreement upon a proposed value. Let us also introduce the primitives used by the processes: each process is able to send and receive messages, through the primitives $send(m)$ and $receive(m)$ respectively, to communicate their intentions to the others. The failure model in a crash failure model, hence a correct process will never crash, while a faulty one eventually will; the number of faulty processes $f$.
+In a synchronous system model, Consensus is quite straightforward to achieve. Let us assume to have a set of $n$ processes, that will be the entities that want to reach a common agreement upon a proposed value. Let us also introduce the primitives used by the processes: each process is able to send and receive messages, through the primitives $send(m)$ and $receive(m)$ respectively, to communicate their intentions to the others. The failure model in a crash failure model, hence a correct process will never crash, while a faulty one eventually will; the number of faulty processes $f$.
 
-Since we are in a synchronous model, we have a bound on the maximum time delay of a message, which means that a process is sure that if a message is sent, it will be received by the receiver before the maximum time delay. This is a quite strong and unrealistic model, but it makes the algorithm to solve consensus quite simple.
+Since we are in a synchronous model, we have a bound on the maximum time delay of a message, which means that a process is sure that if a message is sent, it will be received by the receiver before the maximum time delay. This is a quite strong and unrealistic model, but it makes the algorithm to solve Consensus quite simple.
 
 Let us have the algorithm proceed in rounds, where each round is as follows:
 \begin{enumerate}
@@ -80,15 +76,15 @@ Let us have the algorithm proceed in rounds, where each round is as follows:
 
 The state can be simply a set values received until that moment, with the initial set containing only our own proposed value. Also, in a round a process can receive only a subset of messages from the other processes, since we can have up to $f$ faulty processes.
 
-After $f+1$ rounds, we can be certain that each correct process will have enough information to deterministically decide on a single proposed value, and therefore reach consensus. This is because if we have a round where no process fails, then every process will receive all other values, and therefore we will be able to decide on a value. Also, since we have at most $f$ faulty processes, we can have at most $f$ rounds with a failing process. Therefore, we can be certain that $f+1$ rounds will be enough to reach agreement.
+After $f+1$ rounds, we can be certain that each correct process will have enough information to deterministically decide on a single proposed value, and therefore reach Consensus. This is because if we have a round where no process fails, then every process will receive all other values, and therefore we will be able to decide on a value. Also, since we have at most $f$ faulty processes, we can have at most $f$ rounds with a failing process. Therefore, we can be certain that $f+1$ rounds will be enough to reach agreement.
 
 [should I put the lemmas properly?]
 
 \subsection{Asynchronous model}\label{sec:Asynchronous model}
-In this model, we have no bounds on process speed and maximum message delays; this means that a process if or when a message will be received by the other processes. This is a much weaker model compared to the previous one, and as a matter of fact it is proven that consensus cannot be solved in such a model [FLP proof].
+In this model, we have no bounds on process speed and maximum message delays; this means that a process if or when a message will be received by the other processes. This is a much weaker model compared to the previous one, and as a matter of fact it is proven that Consensus cannot be solved in such a model [FLP proof].
 
 \subsection{Alternative models}\label{sec:Alternative models}
-The synchronous model allows us to solve consensus, but it's too strong of a model to be of any practical use. The asynchronous model cannot solve consensus. Therefore, we either have to find a system model that is weaker than synchronous and stronger than asynchronous, or we have to weaken the problem.
+The synchronous model allows us to solve Consensus, but it's too strong of a model to be of any practical use. The asynchronous model cannot solve Consensus. Therefore, we either have to find a system model that is weaker than synchronous and stronger than asynchronous, or we have to weaken the problem.
 
 An alternative system model would be a partially-synchronous one, where the messages are asynchronous up to a GST (Global Stabilization Time), after which we can assume communication to become synchronous.
 
@@ -99,7 +95,7 @@ We could have failure detectors (which can be used with varying levels of comple
 An example of weaker problem definition would be to allow, for example, to have multiple values decided.
 
 \section{Paxos}\label{sec:Paxos}
-Paxos is an algorithm to achieve consensus that relies on an asynchronous system model, which makes it particularly interesting for real world application where we don't have completely reliable communication channels. To achieve this, the Paxos algorithm needs to elect one process as a leader that will act as a coordinator during the various phases of the protocol.
+Paxos is an algorithm to achieve Consensus that relies on an asynchronous system model, which makes it particularly interesting for real world application where we don't have completely reliable communication channels. To achieve this, the Paxos algorithm needs to elect one process as a leader that will act as a coordinator during the various phases of the protocol.
 
 In Paxos, there are four types of process roles:
 \begin{itemize}
@@ -118,9 +114,9 @@ The acceptors, if the message of the proposer is still the most recent on-going 
 
 In phase 3, once the proposer receives again a quorum of replies from the acceptors, will be allowed to send to the learners the newly decided value.
 
-The pseudo-code for the phases is as follows:[placeholder]
+The pseudo-code for the phases can be seen in algorithm \ref{alg:paxos}.
 \begin{algorithm}
-  \caption{My algorithm}\label{euclid}
+  \caption{PLACEHOLDER}\label{alg:paxos}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{}
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -152,11 +148,7 @@ The pseudo-code for the phases is as follows:[placeholder]
 \centering
 \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
 
-\caption[The architecture of the system]{ The architecture of the system. The
-  \textit{Viper IDE} and \textit{Viper Debugger} boxes denote, respectively,
-  the main Viper extension and the new debugger extension. They both interact,
-  independently, with Visual Studio Code. Viper Server is responsible for
-  running the verification backends.}
+\caption[The architecture of the system]{ paxos execution }
 \label{fig:paxos}
 \end{figure}
 
@@ -183,6 +175,7 @@ As explained in the previous sections, the simple Paxos protocol introduces a se
 \subsection{Partial Ordering of Operations}
 The Paxos protocol allows us to impose a total order on all the messages ordered in the system. The issue is that this total ordering requires all the groups to communicate, slowing down the performance of the system. GeoPaxos handles this by only enforcing a partial order on the message.
 A simple example of this can be seen where, for example, we a sequence of various read operations on different objects. Since these operations do not alter the objects, we can perform them in different orders, as the state would remain consistent; but whenever we have a read and write on one object, these operations must be totally ordered.
+
 \subsection{Exploiting Geographic Locality}
 The third important feature of GeoPaxos is that it tries to exploit the geographic locality of the objects. Whenever clients perform operations on data objects of the system, we would often expect to see a certain degree of locality. In GeoPaxos the state and its objects are not sharder, but instead each object is handled by one or more groups, which means that operations must be ordered by said groups which can be placed in different geographic areas. This means that if we choose the groups that are closer to the region with the highest number of operations for a certain object, we will be able to reduce the latency for the majority of operations, improving the performance. Furthermore, if an object is handled by multiple groups but some operation does not conflict with other operations, then we will use the preferred partition, which is the closest group that has this object.
 

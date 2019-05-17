@@ -64,7 +64,7 @@ The implementation of the B+ Tree data structure, the repartition algorithms and
 In this section we will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. We will then go over the various approaches that were attempted to improve the repartition optimization. 
 
 \subsection{Optimal Partitions Algorithm}\label{sec:optimal-partitions-algorithm} 
-!!! fa un po' schifo
+!!! hard to read, ugly
 The simplest algorithm to implement is the one that compares all the possible combinations of partitions and picks the best one. While this algorithm will give the optimal assignments for minimum average latency for a certain workload, it is also the one that takes the longer amount of time. We will use the performance of this algorithm as a [starting point?] to compare our later algorithms with.
 
 The algorithm goes top to bottom and it calculates the partitions for each node. For each node, we get the workload, that may looks as follows:
@@ -83,7 +83,13 @@ The algorithm goes top to bottom and it calculates the partitions for each node.
 \end{table}
 
 We then load a graph that represents the geographic placements of the various replicas, where the cost of the edges is the estimated average Round Trip Time required to send a message.
-[put a pic with a graph]
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/graph.png}
+  \caption[caption]{An example of a graph representing a geographically distributed environment. Each of the three groups are placed far away, with Round Trip Times defined between each pair of groups. Each group will have multiple replicas in its area, with negligible latency.}
+  \label{fig:graph}
+\end{figure}
 
 We then proceed by looping over all possible combinations of partitions, where a partition can be taken or not taken. Obviously, at least one partition has to be taken. In the case of 3 groups, we would have to consider $2^3 -1 = 7$ combinations: $001, 010, 100, 011, 101, 110, 111$, where 1 and 0 mean that the object will be or will not be assigned to that specific replica, respectively.
 
@@ -94,7 +100,7 @@ Also note that the result depends on the latency that we are currently consideri
 Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
 
 \begin{algorithm}
-  \caption{My algorithm}\label{euclid}
+  \caption{PLACEHOLDER}\label{alg:all-combinations}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{} 
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -132,16 +138,15 @@ This approach will generally work best in cases where we have a great amount of 
 [performance?]
 [specify how many calculations we are saving?]
 
-[pic of grouped levels]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{ }
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/grouped-levels.png}
+  \caption[caption]{ A visualization of how the levels are grouped. The nodes in the same triangles are going to have the same partitioning, based on the aggregated statistics (which are going to be the statistics of the highest-level node). The root is in its own bucket, since we have an odd number of levels. Also note that only a few nodes are shown too keep it simple.}
   \label{fig:Fixed-Size-buckets}
 \end{figure}
 
 \begin{algorithm}
-  \caption{My algorithm}\label{euclid}
+  \caption{PLACEHOLDER}\label{alg:fixed-size}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{} 
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -172,16 +177,15 @@ It is also more likely for the nodes towards the leaves to be approximated, sinc
 
 One challenge of the Variable-Size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
 
-[pic of grouped levels]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{ }
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/dynamic-buckets.png}
+  \caption[caption]{ A visualization of a variable-size grouping. Node 45-66 has few operations, therefore it will group all its children into one bucket. Node 67-74 instead has more operations, therefore performing a better partitioning might give us better improvements; therefore, this node will not group its children, and we will calculate the optimal partition for those nodes. }
   \label{fig:Variable-Size-buckets}
 \end{figure}
 
 \begin{algorithm}
-  \caption{My algorithm}\label{euclid}
+  \caption{PLACEHOLDER}\label{alg:variable-size}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{} 
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -231,7 +235,7 @@ The way to implement this is fairly simple: with the workload at hand, we find t
 [difficulty of choosing threshold]
 
 \begin{algorithm}
-  \caption{My algorithm}\label{euclid}
+  \caption{PLACEHOLDER}\label{alg:hot-groups}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{} 
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -262,7 +266,7 @@ As long as the geographic structure of our whole system does not change, then th
 
 This means that we may end up doing the same calculations multiple times, getting the same results each time. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
 
-Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can get them in $a\approx O(1)$ time. This spawn two issues.
+Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can get them in $a\approx O(1)$ time. This spawns two issues.
 
 How do we define the key? we know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the statistics are unbounded, and since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each others would give us the same assignment of partition, meaning that we would have multiple keys for the same values for no reason.
 
@@ -311,6 +315,8 @@ The LRU is constructed by using two simpler data structures:
   \item A list, which is used to know which items were used last. The most recently used items are put at the front of the list, and the ones at the tail are the next ones to be evicted from the LRU.
 \end{itemize}
 
+Note that we could have used other types of maps, for example a TreeMap, but in our tests we saw no no clear-cut difference between the performances of the two, hence we decided to keep using the HashMap that we were using before.
+
 The map, instead of storing $<Key, Value>$ as before, now stores $<Key, Pair<Value, List_value>>$.
 
 Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list (the $List_value$) to the front, since it was the most recently used.
@@ -320,7 +326,7 @@ The newly inserted item will then be added to the map, and the $List_value$ will
 
 
 \begin{algorithm}
-  \caption{LRU cache}\label{euclid}
+  \caption{LRU cache}\label{alg:lru}
   \begin{algorithmic}[1]
   \Procedure{MyProcedure}{} 
   \State $\textit{stringlen} \gets \text{length of }\textit{string}$
@@ -342,12 +348,11 @@ The newly inserted item will then be added to the map, and the $List_value$ will
   \end{algorithmic}
   \end{algorithm}
 
-  [pretty picture of LRU]
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{placeholder}
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/lru.png}
+  \caption[caption]{An example of an LRU with maximum size of 8. The map contains 8 items, where the key identifies the object in the map and the value is a pair of the value itself and a pointer to an element in the list. The elements of the list contain themselves the key of the object they refer to. This structure allows to perform all the needed operations in constant time. }
+  \label{fig:lru}
 \end{figure}
 
 \subsubsection{LRU Warmup}\label{sec:warmup}
@@ -546,33 +551,81 @@ The particular setups that we will test are four types of client behaviors, that
 
 
 \subsection{local-skewed}\label{sec:local-skewed}
+In a geographically distributed environment, one of the possible types of workloads that we expect to see is a workload that depends on the geographic location of the clients themselves. For example, we expect that the users from Europe will access data object related to news about Europe rather than America or Asia. Another similar example can be seen in social networks, where geographically close people have a higher chance of being connected.
+
+Following this logic, the test we perform has three groups of clients in different regions that perform similar operations, but the distributions are shifted, so that they each focus on different key ranges. Figure ~\ref{fig:} shows a similar workload.
+
+Because this situation is the ideal case for GeoPaxos, we expect the performance to grow quite steadily after a few repartitions. This is because the shifted loads allow to assign the different areas to the different groups quite easily, allowing us to perform all the single group operations with almost no latency involved in the communications.
+
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[caption]{ [put the right picture] }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:local-skewed-loads}
 \end{figure}
-\newpage
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows performance }
+  \label{fig:local-skewed-performance}
+\end{figure}
+
 \subsection{global-skewed}\label{sec:global-skewed}
+Another possible view on client behavior in geographically distributed environments is the opposite of the previous one. Instead of having ``local loads'' that depend on the geographic locations of the clients, we could instead have one global load that is shared among all the clients. Examples of objects that could lead to this behavior are viral news that could interest the whole world, or famous people that have fans from all across the globe.
+
+For the test we have similar loads as before, but this time they are not shifted, meaning that all clients access the same keys with the same distribution. 
+
+The results we expect to see is that the nodes will more or less have similar partitions, since the accesses that they receive from the clients are the similar.
+
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[caption]{ [put the right picture] }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:global-skewed-loads}
 \end{figure}
-\newpage
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows performance }
+  \label{fig:global-skewed-performance}
+\end{figure}
+
 \subsection{constant}\label{sec:constant}
+A third possible load would be a test with a flat distribution, achievable with a skew of $alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distributeed the objects. For this case we don't expect a good performance, as probably most nodes will be assigned to the same partitions.
+
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[caption]{ [put the right picture] }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:constant-loads}
 \end{figure}
-\newpage
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows performance }
+  \label{fig:constant-performance}
+\end{figure}
+
 \subsection{variable}\label{sec:variable}
+This last test is slightly different, since this time we want to test, if and how quickly the system adapts to a change in workloads. We will initially start with a local-skewed workload like in the first case, and after some time we will shift the clients once more, effectively changing the interest in the objects for all clients. What we expect to see is that after the workload change the performance will drop, and after some repartitions the system will slowly move onto the new partitioning that increases the performance with the new workload.
+
+The speed at which the system adapts to the new workload is highly dependant on the $alpha$ used when updating the statistics, which defines how quickly the statistics are aging with every repartition. We use an alpha of $0.5$, as from our tests it looked like it was a fine compromise between adaptability and resiliance to unexpected behaviors. A slow adaptation to the new workload would be acceptable, since in our test we are using the most abrupt change possible, which is quite unlikely in a normal execution.
+
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/skew-alpha1.png}
-  \caption[caption]{ [put the right picture] }
-  \label{fig:b+tree}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:variable-loads}
 \end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \caption[caption]{ picture that shows performance }
+  \label{fig:variable-performance}
+\end{figure}
+
+\subsection{Results Evaluation}\label{sec:results-evaluation}
