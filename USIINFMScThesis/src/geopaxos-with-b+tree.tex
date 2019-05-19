@@ -100,25 +100,63 @@ Also note that the result depends on the latency that we are currently consideri
 Once we have gone over all the combinations, we pick the one with the lowest cost, and we move onto the next object.
 
 \begin{algorithm}
-  \caption{PLACEHOLDER}\label{alg:all-combinations}
+  \caption{All-Combinations}\label{alg:all-combinations}
   \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{} 
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
+  \Function{repartition}{}:
+  \State $repartition\_tree(root)$
+  \EndFunction
+  \Function{repartition\_tree}{$node$}:
+    \If {$node.has\_changed$}
+      % \State $vw = vector(node.statistics)$
+      \State $topology = new\ topology(node.workloads)$
+      \State $g = topology.calculate\_min\_cost\_graph()$
+      \For {$vertex \in g$}:
+        \If {$vertex.has\_object$}:
+        \State $node.partitions += vertex$
+          \If {$vertex == my\_partition\ \wedge vertex.has\_object$}
+            \State $node.preferred\_partition = vertex$
+          \EndIf
+        \EndIf
+      \EndFor
+    \EndIf
+    \If{$!node\ is\ leafnode$}:
+      \For {$child\ \in\ node.child\_nodes$}:
+        \State $repartiton\_tree(child)$
+        \EndFor
+    \EndIf
+    \EndFunction
+    \Function{calculate\_min\_cost\_graph}{}:
+    \State $min\_cost = \infty$
+      \ForAll {$graph\ combination$}:
+        \State $cost = calculate\_cost(graph, vertices)$
+        \If {$cost < min\_cost$}:
+          \State $min\_cost = cost$
+          \State $min\_graph = graph$
+        \EndIf
+      \EndFor
+    \State \textbf{return} $min\_graph$
+    \EndFunction
+    \Function{calculate\_cost}{$vertex$}:
+      \State $in\_reads, out\_reads, in\_writes, out\_writes = 0$
+      \State $reps = |vertex \in graph.vertices \mid vertex.has\_object|$
+      \For {$vertex \in graph.vertices$}:
+      \State $min\_weight = nearest vertex \in graph | vertex.has\_object$
+      \State $max\_weight = furthest\ vertex \in graph | vertex.has\_object$
+        \If {$vertex.has\_object$}:
+          \State $in\_reads+= 1$
+          \If {$rep\_size > 1$}:
+          \State $\in\_writes+= vertex.writes$
+          \Else
+          \State  $\in\_writes+= 1 $
+          \EndIf
+        \Else:
+          \State $out\_reads += vertex.reads \cdot min\_weight$
+          \State $out\_writes += vertex.writes \cdot min\_weight$
+        \EndIf
+      \EndFor
+      \State $cost = in\_reads+ out\_reads + (in\_writes+ out\_writes) \cdot max\_weight$
+      \State \textbf{return} $cost$
+  \EndFunction
   \end{algorithmic}
   \end{algorithm}
 
@@ -146,25 +184,68 @@ This approach will generally work best in cases where we have a great amount of 
 \end{figure}
 
 \begin{algorithm}
-  \caption{PLACEHOLDER}\label{alg:fixed-size}
+  \caption{Fixed-Size Buckets}\label{alg:fixed-size}
   \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{} 
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
+    \Function{repartition}{}:
+  \State $repartition\_tree(root, true)$
+  \EndFunction
+  \Function{repartition\_tree}{$node, is\_root$}:
+  \State $is\_bucket\_root = node.level\ is\ odd \vee is\_root$
+    \If {$node.has\_changed \vee is\_bucket\_root$}:
+      % \State $vw = vector(node.statistics)$
+      \State $topology = new\ topology(node.workloads)$
+      \State $g = topology.calculate\_min\_cost\_graph()$
+      \For {$vertex \in g$}:
+        \If {$vertex.has\_object$}:
+        \State $node.partitions += vertex$
+          \If {$vertex == my\_partition\ \wedge vertex.has\_object$}
+            \State $node.preferred\_partition = vertex$
+          \EndIf
+        \EndIf
+      \EndFor
+    \EndIf
+    \If{$!node\ is\ leafnode$}:
+      \For {$child\ \in\ node.child\_nodes$}:
+      \If {$is\_bucket\_root = node.level\ is\ odd$}:
+        \State $child.partitions = node.partitions$
+        \State $child.preferred\_partition = node.preferred\_partition$
+      \EndIf
+        \State $repartiton\_tree(child, false)$
+        \EndFor
+    \EndIf
+    \EndFunction
+    \Function{calculate\_min\_cost\_graph}{}:
+    \State $min\_cost = \infty$
+      \ForAll {$graph\ combination$}:
+        \State $cost = calculate\_cost(graph, vertices)$
+        \If {$cost < min\_cost$}:
+          \State $min\_cost = cost$
+          \State $min\_graph = graph$
+        \EndIf
+      \EndFor
+    \State \textbf{return} $min\_graph$
+    \EndFunction
+    \Function{calculate\_cost}{$vertex$}:
+      \State $in\_reads, out\_reads, in\_writes, out\_writes = 0$
+      \State $reps = |vertex \in graph.vertices \mid vertex.has\_object|$
+      \For {$vertex \in graph.vertices$}:
+      \State $min\_weight = nearest\ vertex \in graph | vertex.has\_object$
+      \State $max\_weight = furthest\ vertex \in graph | vertex.has\_object$
+        \If {$vertex.has\_object$}:
+          \State $in\_reads+= 1$
+          \If {$rep\_size > 1$}:
+          \State $\in\_writes+= vertex.writes$
+          \Else
+          \State  $\in\_writes+= 1 $
+          \EndIf
+        \Else:
+          \State $out\_reads += vertex.reads \cdot min\_weight$
+          \State $out\_writes += vertex.writes \cdot min\_weight$
+        \EndIf
+      \EndFor
+      \State $cost = in\_reads+ out\_reads + (in\_writes+ out\_writes) \cdot max\_weight$
+      \State \textbf{return} $cost$
+  \EndFunction
   \end{algorithmic}
   \end{algorithm}
 
@@ -185,25 +266,69 @@ One challenge of the Variable-Size buckets approach is to figure out when it is 
 \end{figure}
 
 \begin{algorithm}
-  \caption{PLACEHOLDER}\label{alg:variable-size}
+  \caption{Variable-Size Buckets}\label{alg:variable-size}
   \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{} 
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
+    \Function{repartition}{}:
+  \State $repartition\_tree(parent\_node, workload\_ratio)$
+  \EndFunction
+  \Function{repartition\_tree}{$node, is\_root$}:
+    \State $my\_workload = 0$
+    \If {$node.has\_changed$}:
+      \State $my\_workload = sum(node.workloads)$
+      \If {$my\_workload < workload\_ratio * treshold$}:
+      \State $child.partitions = parent.partitions$
+      \State $child.preferred\_partition = parent.preferred\_partition$
+      \Else
+      \State $topology = new\ topology(node.workloads)$
+      \State $g = topology.calculate\_min\_cost\_graph()$
+      \For {$vertex \in g$}:
+        \If {$vertex.has\_object$}:
+        \State $node.partitions += vertex$
+          \If {$vertex == my\_partition\ \wedge vertex.has\_object$}
+            \State $node.preferred\_partition = vertex$
+          \EndIf
+        \EndIf
+      \EndFor
+    \EndIf
+    \EndIf
+    \If{$!node\ is\ leafnode$}:
+      \For {$child\ \in\ node.child\_nodes$}:
+        \State $repartiton\_tree(child, false)$
+        \EndFor
+    \EndIf
+    \EndFunction
+    \Function{calculate\_min\_cost\_graph}{}:
+    \State $min\_cost = \infty$
+      \ForAll {$graph\ combination$}:
+        \State $cost = calculate\_cost(graph, vertices)$
+        \If {$cost < min\_cost$}:
+          \State $min\_cost = cost$
+          \State $min\_graph = graph$
+        \EndIf
+      \EndFor
+    \State \textbf{return} $min\_graph$
+    \EndFunction
+    \Function{calculate\_cost}{$vertex$}:
+      \State $in\_reads, out\_reads, in\_writes, out\_writes = 0$
+      \State $reps = |vertex \in graph.vertices \mid vertex.has\_object|$
+      \For {$vertex \in graph.vertices$}:
+      \State $min\_weight = nearest\ vertex \in graph | vertex.has\_object$
+      \State $max\_weight = furthest\ vertex \in graph | vertex.has\_object$
+        \If {$vertex.has\_object$}:
+          \State $in\_reads+= 1$
+          \If {$rep\_size > 1$}:
+          \State $\in\_writes+= vertex.writes$
+          \Else
+          \State  $\in\_writes+= 1 $
+          \EndIf
+        \Else:
+          \State $out\_reads += vertex.reads \cdot min\_weight$
+          \State $out\_writes += vertex.writes \cdot min\_weight$
+        \EndIf
+      \EndFor
+      \State $cost = in\_reads+ out\_reads + (in\_writes+ out\_writes) \cdot max\_weight$
+      \State \textbf{return} $cost$
+  \EndFunction
   \end{algorithmic}
   \end{algorithm}
 
@@ -230,30 +355,76 @@ The way to implement this is fairly simple: with the workload at hand, we find t
   \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:workload-example}
 \end{table}
 
-[logic behind it, with a picture/table to show workloads and which group to discard]
-
-[difficulty of choosing threshold]
-
 \begin{algorithm}
-  \caption{PLACEHOLDER}\label{alg:hot-groups}
+  \caption{Hot Groups}\label{alg:hot-groups}
   \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{} 
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
+  \Function{repartition}{}:
+  \State $repartition\_tree(root)$
+  \EndFunction
+  \Function{repartition\_tree}{$node$}:
+    \If {$node.has\_changed$}
+      % \State $vw = vector(node.statistics)$
+      \State $topology = new\ topology(node.workloads)$
+      \State $g = topology.calculate\_min\_cost\_graph()$
+      \For {$vertex \in g$}:
+        \If {$vertex.has\_object$}:
+        \State $node.partitions += vertex$
+          \If {$vertex == my\_partition\ \wedge vertex.has\_object$}
+            \State $node.preferred\_partition = vertex$
+          \EndIf
+        \EndIf
+      \EndFor
+    \EndIf
+    \If{$!node\ is\ leafnode$}:
+      \For {$child\ \in\ node.child\_nodes$}:
+        \State $repartiton\_tree(child)$
+        \EndFor
+    \EndIf
+    \EndFunction
+    \Function{calculate\_min\_cost\_graph}{}:
+    \State $min\_cost = \infty$
+    \State $max\_rw = 0$
+    \For $vertex \in graph$:
+      \If {$vertex.read + vertex.write > max\_rw$}:
+        \State $max\_rw = vertex.read + vertex.write$
+      \EndIf
+    \EndFor
+    \ForAll {$graph\ combination$}:
+      \For {$vertex \in combination$}:
+        \If {$(vertex.reads + vertex.writes) / max\_rw < threshold:$}
+          \State $skip\ combination$
+        \EndIf
+      \EndFor
+      \State $cost = calculate\_cost(graph, vertices)$
+      \If {$cost < min\_cost$}:
+        \State $min\_cost = cost$
+        \State $min\_graph = graph$
+      \EndIf
+    \EndFor
+    \State \textbf{return} $min\_graph$
+    \EndFunction
+
+    \Function{calculate\_cost}{$vertex$}:
+      \State $in\_reads, out\_reads, in\_writes, out\_writes = 0$
+      \State $reps = |vertex \in graph.vertices \mid vertex.has\_object|$
+      \For {$vertex \in graph.vertices$}:
+      \State $min\_weight = nearest vertex \in graph | vertex.has\_object$
+      \State $max\_weight = furthest\ vertex \in graph | vertex.has\_object$
+        \If {$vertex.has\_object$}:
+          \State $in\_reads+= 1$
+          \If {$rep\_size > 1$}:
+          \State $\in\_writes+= vertex.writes$
+          \Else
+          \State  $\in\_writes+= 1 $
+          \EndIf
+        \Else:
+          \State $out\_reads += vertex.reads \cdot min\_weight$
+          \State $out\_writes += vertex.writes \cdot min\_weight$
+        \EndIf
+      \EndFor
+      \State $cost = in\_reads+ out\_reads + (in\_writes+ out\_writes) \cdot max\_weight$
+      \State \textbf{return} $cost$
+  \EndFunction
   \end{algorithmic}
   \end{algorithm}
 
@@ -328,23 +499,67 @@ The newly inserted item will then be added to the map, and the $List_value$ will
 \begin{algorithm}
   \caption{LRU cache}\label{alg:lru}
   \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{} 
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
+    \Function{repartition}{}:
+  \State $repartition\_tree(root)$
+  \EndFunction
+  \Function{repartition\_tree}{$node$}:
+    \If {$node.has\_changed$}
+      % \State $vw = vector(node.statistics)$
+      \State $topology = new\ topology(node.workloads)$
+      \State $g = topology.calculate\_min\_cost\_graph()$
+      \For {$vertex \in g$}:
+        \If {$vertex.has\_object$}:
+        \State $node.partitions += vertex$
+          \If {$vertex == my\_partition\ \wedge vertex.has\_object$}
+            \State $node.preferred\_partition = vertex$
+          \EndIf
+        \EndIf
+      \EndFor
+    \EndIf
+    \If{$!node\ is\ leafnode$}:
+      \For {$child\ \in\ node.child\_nodes$}:
+        \State $repartiton\_tree(child)$
+        \EndFor
+    \EndIf
+    \EndFunction
+    \Function{calculate\_min\_cost\_graph}{}:
+    \State $min\_cost = \infty$
+    \State $lru\_key = keygen(node.statistics)$
+    \State $value = lru.get(key)$
+    \If {$value$}:
+      \State \textbf{return} $value$
+    \EndIf
+      \ForAll {$graph\ combination$}:
+        \State $cost = calculate\_cost(graph, vertices)$
+        \If {$cost < min\_cost$}:
+          \State $min\_cost = cost$
+          \State $min\_graph = graph$
+        \EndIf
+      \EndFor
+    \State $lru.put(key, min\_graph)$
+    \State \textbf{return} $min\_graph$
+    \EndFunction
+    \Function{calculate\_cost}{$vertex$}:
+      \State $in\_reads, out\_reads, in\_writes, out\_writes = 0$
+      \State $reps = |vertex \in graph.vertices \mid vertex.has\_object|$
+      \For {$vertex \in graph.vertices$}:
+      \State $min\_weight = nearest vertex \in graph | vertex.has\_object$
+      \State $max\_weight = furthest\ vertex \in graph | vertex.has\_object$
+        \If {$vertex.has\_object$}:
+          \State $in\_reads+= 1$
+          \If {$rep\_size > 1$}:
+          \State $\in\_writes+= vertex.writes$
+          \Else
+          \State  $\in\_writes+= 1 $
+          \EndIf
+        \Else:
+          \State $out\_reads += vertex.reads \cdot min\_weight$
+          \State $out\_writes += vertex.writes \cdot min\_weight$
+        \EndIf
+      \EndFor
+      \State $cost = in\_reads+ out\_reads + (in\_writes+ out\_writes) \cdot max\_weight$
+      \State \textbf{return} $cost$
+  \EndFunction
   \end{algorithmic}
   \end{algorithm}
 
@@ -374,13 +589,13 @@ We start each test by inserting in the B+ Tree a number of new values equal to $
 
 For the last two test cases, the ones regarding the LRU caching, we perform the test differently, since it is a different type of optimization; we do the setup part of the test as before, but we repeat the part of performing operations and repartitioning one hundred times. This is because the LRU is an extra feature that can be paired with any of the previous algorithms, and its usefulness only shows once we have performed multiple repartitions.
 
-[put picture that shows client loads/skews during tests]
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/all.png}
-  \caption[caption]{The performance of the All-Combinations method with different groups and items number.}
-  \label{fig:all}
-\end{figure}
+% [put picture that shows client loads/skews during tests]
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
+%   \caption[caption]{A visualization of the distribution of clients operations from the different groups and regions.}
+%   \label{fig:all}
+% \end{figure}
 
 \subsection{All-Combinations}\label{sec:All-Combinations}
 This scenario will be used as a benchmark to which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload, but it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently to make sure that the current partitioning matches the load of the system.
@@ -466,7 +681,6 @@ The results seem really good: in 100 repartitions the computation time to $\frac
 
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
-\newpage
 \subsection{LRU with Hot Groups}\label{sec:lru-hot-groups}
 We will now test the performance of the LRU combined with the Hot Groups approach; the idea is that the Hot Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the Hot Groups. 
 
@@ -559,7 +773,7 @@ Because this situation is the ideal case for GeoPaxos, we expect the performance
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
   \caption[caption]{ picture that shows client loads }
   \label{fig:local-skewed-loads}
 \end{figure}
@@ -580,7 +794,7 @@ The results we expect to see is that the nodes will more or less have similar pa
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_global.png}
   \caption[caption]{ picture that shows client loads }
   \label{fig:global-skewed-loads}
 \end{figure}
@@ -597,7 +811,7 @@ A third possible load would be a test with a flat distribution, achievable with 
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_constant.png}
   \caption[caption]{ picture that shows client loads }
   \label{fig:constant-loads}
 \end{figure}
@@ -616,7 +830,8 @@ The speed at which the system adapts to the new workload is highly dependant on 
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_variable.png}
   \caption[caption]{ picture that shows client loads }
   \label{fig:variable-loads}
 \end{figure}

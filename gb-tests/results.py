@@ -47,17 +47,27 @@ if op == "tp":
     print ('#', srcdir, np.mean(a), min, max)
 
 elif op == "skew":
-    lines = [int(line.rstrip('\n')) for line in open(srcdir)]
-    # lines1 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_fixedbucket_assigns.txt")]
-    # lines2 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_all_assigns.txt")]
-    # lines3 = [int(line.rstrip('\n')) for line in open("skew/LRU_8_1000000.txt")]
+    # lines = [int(line.rstrip('\n')) for line in open(srcdir)]
+    lines1 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
+    # for i in range():
+    #     lines1.insert(0, lines1.pop(-1))
+    # lines2 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha1smooth.txt")]
+    # for i in range(25):
+    #     lines2.insert(0, lines2.pop(-1))
+    # lines3 = [int(line.rstrip('\n')) for line in open
+    #     ("skew/skew-alpha1smooth.txt")]
+    # for i in range(75):
+    #     lines3.insert(0, lines3.pop(-1))
     plt.xlabel('Key')
     plt.ylabel('Frequency')
-    # plt.plot(lines1, label='Fixed-Size Bucket')
-    # plt.plot(lines2, label='All Combinations')
-    # plt.plot(lines3, label='1\'000\'000 Items')
-    plt.plot(lines)
-    # plt.legend()
+    plt.plot(lines1)
+    # plt.plot(lines2, label='Group 2')
+    # plt.plot(lines3, label='Group 3')
+    # plt.plot(lines)
+    axes = plt.gca()
+    # axes.set_xlim([xmin,xmax])
+    axes.set_ylim([0,10000])
+    plt.legend()
     plt.tight_layout()
     plt.show()
 elif op == "lat":
