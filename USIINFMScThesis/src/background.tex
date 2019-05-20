@@ -1,198 +1,44 @@
 \chapter{Background}\label{sec:Background}
-In this section we will go over some of the fundamentals of distributed systems and algorithms that will help to better understand the later parts of this report.
-
-We will first give a brief introduction to the main challenges of working in distributed environments. Then we will discuss a fundamental problem of distributed systems known as Consensus, followed by the description of one of the most popular algorithms used to solve Consensus in distributed settings, called Paxos. Lastly we will introduce GeoPaxos, an improvement over Paxos which aims to provide better performance in geo-distributed environments.
-
-\section{Distributed Systems}\label{sec:Distributed Systems}
-Distributed systems can be encountered in a multitude of situations in our everyday lives, and their importance is growing every year: Entertainment services such as music and video streaming services, banks, hospitals, social medias, web engines are just a few of the many types of distributed systems that we use on a daily basis, and each of these may have different challenges and needs when it comes to handling distribution.
-
-Even a clear definition of a distributed system is hard to find. In general, we can describe it as a collection of indipendent machines that communicate and coordinate their work to provide a certain service to its users: to them, the system should appear as a single and homogeneous entity, hiding its distributed nature.
-
-Working with distributed environments has some inherent challenges, some more important than others depending on the specific system. Concurrency issues, for example when multiple users want to withdraw money from a bank account. Ordering and synchronization, because the different machines will most likely work with different clocks and their communication may take a noticeable amount of time. Failure resiliance, so that the system does not go down when one of its machines fails. These are only a few of the many problems that can and will be encountered when working with distributed systems.
-
-To tackle these problems, The choice of the models used to represent them is fundamental: choosing a model too strong may make the problem easier to solve, but it may represent an unrealistic view of the problem at hand. On other hand, weaker models may make the problem impossible to solve without further assumptions. 
-
-A synchronous system is one where we know that the process speed and the time delay for the communication are bounded; this helps us simplify our view of the timing and communication side, but it will usually not be a realistic representation of the real world system.
-
-On the other hand, an asynchronous system is one that  does not have bounds on process speed and time delay, which is a more general assumption which could greatly increase the difficulty of solving the problem.
-
-Similarly, for a model we could have reliable channels, where if a process sends a message and the receiver does not crash then the receiver will get the message, or quasi-reliable, where both sender and receiver must not crash for the receiver to get the message.
-
-It is also important to model the possible failure of the processes. 
-Some types of failure models can be:
-\begin{itemize}
-\item \textbf{Failstop} the process fails by halting execution, and it does not recover. Other processes will know about the failure of the process
-\item \textbf{Crash} the process fails by halting execution, and it does not recover. Furthermore, the other processes may not be able to identify its failure
-\item \textbf{Byzantine failures} the process fails by exhibiting arbitrary behavior, which could be unexpected replies or malicious actions
-% \item \textbf{Crash+Link} a link fails by losing some messages, but does not delay, duplicate, or corrupt messages.
-% \item \textbf{Receive-omission}: a process fails by receiving only a subset of the messages sent to it, or by halting (i.e., crashing).
-\end{itemize}
-
-Again, the choice of the failure model gives us different degrees of difficulty: a failstop model makes the problem easier to solve, but a system that is able to tolerate byzantine failures is going to be much more resiliant to failures.
+In this chapter we will go over some of the fundamentals of distributed data structures and algorithms that will help to better understand the later parts of this report. In particular, we will first focus on the nuances of distributed data structures and then on  GeoPaxos, an improvement over Paxos which aims to provide better performance in geo-distributed environments.
 
 \section{Distributed Data Structures}\label{sec:distributed-data-structures}
 
-\section{State Machine Replication}\label{sec:state-machine-replication}
-State Machine Replication (SMR) is a fundamental aspect of distributed systems. When we have a multitude of servers that different clients can access, for example, we usually want the state of the servers to be coherent and cosistent among themselves. A way to achieve this is with SMR. By having operations that are deterministic, and imposing an order on the operations (more or less strict depending on the operations themselves and the specific system), it is possible to maintain a consistent state on the different servers. Lamport was the first to introduce SMR[on "Using Time Instead of Timeout In Distributed Systems"].
-
-The basic idea comes from State Machines, which can be defined by sets of states, inputs, outputs and transition functions. Similarly, if we treat our servers as State Machine, then we know that given the correct order of deterministic operations we know that the final state of the server will be the same. Since for SMR the ordering of the operations is necessary, we need to achieve this in a distributed environment. We will discuss this problem and a possible solution in the next sections, namely Consensus and Paxos.
-
-\section{Consensus}\label{sec:Consensus}
-
-The problem of Consensus is a fundamental problem in distributed systems: it was first introduced in the early 80s [Pease], [Lamport] and since then it remained important in most distributed environment, ranging from more classical server applications to the more recent Blockchains.
-
-Consensus is basically an agreement problem: the goal is to have a set of entities reach an agreement on a value that was previously proposed by (at least) one of those entitities. This definition is quite general, and for a good reason: depending on the different assumptions we make on the system model, there are stronger and weaker types of Consensus that can be achieved. 
-
-The three core properties of a Consensus protocol are the following:
-
-\begin{itemize}
-    \item \textbf{Termination} Eventually every correct process decides on one value
-    \item \textbf{Uniform integrity} If a process decides on a value, then this value was proposed by some process
-    \item \textbf{Uniform agreement} No two processes decide on a different value
-    \end{itemize}
-
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/consensus.png}
-
-  \caption[The architecture of the system]{ The Consensus problem: $n$ processes, which are the participating proposers, can proposer a value. After Consensus is reached, the processes will know the decided value, in this case $v'$, which had to be proposed by one of the processes. }
-  \label{fig:Consensus}
-\end{figure}
-
-In this section we will go over some of the more relevant types of Consensus, and respective implementations that are able to achieve Consensus in the given system models.
-
-
-\subsection{Synchronous model}\label{sec:Synchronous model}
-In a synchronous system model, Consensus is quite straightforward to achieve. Let us assume to have a set of $n$ processes, that will be the entities that want to reach a common agreement upon a proposed value. Let us also introduce the primitives used by the processes: each process is able to send and receive messages, through the primitives $send(m)$ and $receive(m)$ respectively, to communicate their intentions to the others. The failure model in a crash failure model, hence a correct process will never crash, while a faulty one eventually will; the number of faulty processes $f$.
-
-Since we are in a synchronous model, we have a bound on the maximum time delay of a message, which means that a process is sure that if a message is sent, it will be received by the receiver before the maximum time delay. This is a quite strong and unrealistic model, but it makes the algorithm to solve Consensus quite simple.
-
-Let us have the algorithm proceed in rounds, where each round is as follows:
-\begin{enumerate}
-    \item Each process sends to all other processes a message containing information about its state.
-    \item At the end of the round, after the maximum time bound, processes will have received a set of messages from a subset of all processes.
-    \item The processes will then use the received messages together with its current state to reach a new state.
-\end{enumerate}
-
-The state can be simply a set values received until that moment, with the initial set containing only our own proposed value. Also, in a round a process can receive only a subset of messages from the other processes, since we can have up to $f$ faulty processes.
-
-After $f+1$ rounds, we can be certain that each correct process will have enough information to deterministically decide on a single proposed value, and therefore reach Consensus. This is because if we have a round where no process fails, then every process will receive all other values, and therefore we will be able to decide on a value. Also, since we have at most $f$ faulty processes, we can have at most $f$ rounds with a failing process. Therefore, we can be certain that $f+1$ rounds will be enough to reach agreement.
-
-[should I put the lemmas properly?]
-
-\subsection{Asynchronous model}\label{sec:Asynchronous model}
-In this model, we have no bounds on process speed and maximum message delays; this means that a process if or when a message will be received by the other processes. This is a much weaker model compared to the previous one, and as a matter of fact it is proven that Consensus cannot be solved in such a model [FLP proof].
-
-\subsection{Alternative models}\label{sec:Alternative models}
-The synchronous model allows us to solve Consensus, but it's too strong of a model to be of any practical use. The asynchronous model cannot solve Consensus. Therefore, we either have to find a system model that is weaker than synchronous and stronger than asynchronous, or we have to weaken the problem.
-
-An alternative system model would be a partially-synchronous one, where the messages are asynchronous up to a GST (Global Stabilization Time), after which we can assume communication to become synchronous.
-
-Another option is to still use an asynchronous system, but to also elect a process to be the leader and guide the whole decision procedure; an example of such an algorithm is Paxos, which is presented in the next section.
-
-We could have failure detectors (which can be used with varying levels of completeness and accuracy), which could allow us to figure out when a process has failed, and therefore stoping us from waiting indefinitely for a message like in the basic asynchronous model.
-
-An example of weaker problem definition would be to allow, for example, to have multiple values decided.
-
-\section{Paxos}\label{sec:Paxos}
-Paxos is an algorithm to achieve Consensus that relies on an asynchronous system model, which makes it particularly interesting for real world application where we don't have completely reliable communication channels. To achieve this, the Paxos algorithm needs to elect one process as a leader that will act as a coordinator during the various phases of the protocol.
-
-In Paxos, there are four types of process roles:
-\begin{itemize}
-  \item \textbf{Proposers} the processes that want to propose a value to be decided
-  \item \textbf{Acceptors} the processes that take part in the voting part of the protocol; a quorum of acceptors is needed
-  \item \textbf{Learners} the processes that, at the end of the algorithm, will be notified about the value decided by the algorithm
-  \item \textbf{Leader} the process that acts as a coordinator
-\end{itemize}
-
-The election of the leader can be achieved in many different ways, as long as there is a point after which we have a unique correct process that is identified by the other processes as the leader.
-
-The algorithm is divided into tree phases. During phase 1, a proposer that wants to propose a new value sends a new arbitrary value c-rnd higher than any previous c-rnd to the acceptors, so that all of them know that this is the most recent proposal attempt. Each acceptor, if the received c-rnd is truly the highest one it has received, replies to the proposer with its current state (rnd, v-rnd, v-val) so that the proposer know if there was already a previous proposed value, or if the proposer is allowed to propose its own.
-
-In phase 2, once the proposer has received a reply from a quorum of acceptors, it checks if there was any acceptor that had previously voted for a value, and if this is the case, it picks the most recent one as the value to propose. If instead no acceptor had previously voted for a value, the proposer will be able to propose its own value. The proposer will then send to the acceptors the actual value to be proposed.
-The acceptors, if the message of the proposer is still the most recent on-going proposal, will send back a message as an acknowledgement back to the proposer.
-
-In phase 3, once the proposer receives again a quorum of replies from the acceptors, will be allowed to send to the learners the newly decided value.
-
-The pseudo-code for the phases can be seen in algorithm \ref{alg:paxos}.
-\begin{algorithm}
-  \caption{PLACEHOLDER}\label{alg:paxos}
-  \begin{algorithmic}[1]
-  \Procedure{MyProcedure}{}
-  \State $\textit{stringlen} \gets \text{length of }\textit{string}$
-  \State $i \gets \textit{patlen}$
-  \State \emph{top}:
-  \If {$i > \textit{stringlen}$} \Return false
-  \EndIf
-  \State $j \gets \textit{patlen}$
-  \State \emph{loop}:
-  \If {$\textit{string}(i) = \textit{path}(j)$}
-  \State $j \gets j-1$.
-  \State $i \gets i-1$.
-  \State \textbf{goto} \emph{loop}.
-  \State \textbf{close};
-  \EndIf
-  \State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-  \State \textbf{goto} \emph{top}.
-  \EndProcedure
-  \end{algorithmic}
-  \end{algorithm}
-
-\begin{itemize}
-  \item \textbf{Termination} Eventually every correct process decides on one value
-  \item \textbf{Uniform integrity} If a process decides on a value, then this value was proposed by some process
-  \item \textbf{Uniform agreement} No two processes decide on a different value
-  \end{itemize}
-
-\begin{figure}[htb]
-\centering
-\includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-
-\caption[The architecture of the system]{ paxos execution }
-\label{fig:paxos}
-\end{figure}
-
-[should I add correctness, liveness, and so on?]
-
-Remember that this algorithm allows only for the decision of one value; once a value is decided, another instance of Paxos has to be initiated. Hence, for realistic use cases one would use system that allow to run multiple instances of paxos in a row, such as MultiPaxos.
-
-The presented version of Paxos is the simplest one. Liveness in this case is not guaranteed; to ensure it, only the leader should be allowed to propose values, since otherwise it is possible that two proposers keep stealing their turn from each others without making any progress. Therefore the proposers should forward their values to the leader that will then try to propose them.
-
-Various other improvements can be performed: for example, the leader could start phase 1 before a value is proposed, which means that once a value is ready to be proposed we can start directly from phase 2, virtually removing the delay of phase 1.
-Also, at the end of Phase 2B the acceptors could send the decided value directly to the learners instead of having to first send it to the proposers; this allows to remove a whole message delay from the algorithm.
-
-[should I write best message delays?]
 
 \section{GeoPaxos}\label{sec:GeoPaxos}
 GeoPaxos[cite] is a protocol that achieves high performance of State Machine Replication for strongly consistent systems that are geographically distributed. 
 
-GeoPaxos has makes use of three important features that distinguish it from alternative solutions: these features are \emph{decoupling order from execution}, \emph{partial ordering of operations} and lastly \emph{exploiting geographic locality}.
+Figure \ref{fig:datacenters} shows an example of a GeoPaxos deployment across three regions. There are three objects, X, Y and Z, which are replicated to all replicas. Each object also has a preferred site, which means that if there is a choice of which site should handle the ordering of the operations, the preferred site is used.
 
-[explain object partitions, preferred partitions]
+We can also see how GeoPaxos allows a certain amount of redundancy both of replicas and groups, which makes it more resiliant to failures.
 
-\subsection{Decoupling Order from Execution}
-As explained in the previous sections, the simple Paxos protocol introduces a set of roles, namely acceptors, learners, proposers (and an eventual leader). When working with a distributed environment, deciding where to place each of these roles is important: in particular, placing acceptors and learners in the same replica, as it is often done with Paxos[cite?] turns out not to be efficient. This is because we would want replicas to be close to the clients using them to decrease latency, but then the replicas would be far away from each others, increasing the latency required to perform the ordering of messages. For this reason, GeoPaxos decouples the roles of acceptors and learners, which introduces a higher flexibility for the placement of the roles, allowing us to keep acceptor nodes close to each other for the ordering communications and the learners close to the clients, so that their requests will be dispatched faster.
-\subsection{Partial Ordering of Operations}
-The Paxos protocol allows us to impose a total order on all the messages ordered in the system. The issue is that this total ordering requires all the groups to communicate, slowing down the performance of the system. GeoPaxos handles this by only enforcing a partial order on the message.
-A simple example of this can be seen where, for example, we a sequence of various read operations on different objects. Since these operations do not alter the objects, we can perform them in different orders, as the state would remain consistent; but whenever we have a read and write on one object, these operations must be totally ordered.
-
-\subsection{Exploiting Geographic Locality}
-The third important feature of GeoPaxos is that it tries to exploit the geographic locality of the objects. Whenever clients perform operations on data objects of the system, we would often expect to see a certain degree of locality. In GeoPaxos the state and its objects are not sharder, but instead each object is handled by one or more groups, which means that operations must be ordered by said groups which can be placed in different geographic areas. This means that if we choose the groups that are closer to the region with the highest number of operations for a certain object, we will be able to reduce the latency for the majority of operations, improving the performance. Furthermore, if an object is handled by multiple groups but some operation does not conflict with other operations, then we will use the preferred partition, which is the closest group that has this object.
-
-[for example, if our system contains text documents in various languages, we would expect that the majority of accesses to the documents come from countries whose main languages are the ones that the documents are written in]
-
-\subsection{other GeoPaxos stuff}
 \begin{figure}[htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/datacenters.png}
 
-  \caption[The architecture of the system]{ pic desc }
+  \caption[The architecture of the system]{Coelho \texttrademark}
   \label{fig:datacenters}
 \end{figure}
+
+Furthermore, GeoPaxos makes use of three important features that distinguish it from alternative solutions: these features are \emph{decoupling order from execution}, \emph{partial ordering of operations} and \emph{exploiting geographic locality}. 
+
+\subsection{Decoupling Order from Execution}
+The Paxos protocol introduces a set of roles, namely acceptors, learners, proposers (and an eventual leader). When working with a distributed environment, deciding where to place each of these roles is important: in particular, placing acceptors and learners in the same replica, as it is often done for with Paxos[cite?] turns out not to be efficient. This is because we would want replicas to be close to the clients to decrease latency, but then the replicas would be far away from each others, increasing the latency required to perform the ordering of messages.
+
+For this reason, GeoPaxos decouples the roles of acceptors and learners, which introduces a higher flexibility for the placement of the roles, allowing us to keep acceptor entities close to each other for the ordering communications and the learners close to the clients, so that their requests will be dispatched faster.
+
+[possibly a picture? might be clear enough without it]
+
+\subsection{Partial Ordering of Operations}
+The Paxos protocol allows us to impose a total order on all the messages ordered in the system. The issue is that this total ordering requires all the groups to communicate, slowing down the performance of the system. GeoPaxos handles this by only enforcing a partial order on the message.
+A simple example of this can be seen where, for example, we have a sequence of various read operations on different objects. Since these operations do not alter the objects, we can perform them in different orders, as the state would remain consistent; but whenever we have a read and write on one object, these operations must be totally ordered.
+
 \begin{figure}[htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partial-ordering.png}
 
-  \caption[The architecture of the system]{ pic desc }
+  \caption[The architecture of the system]{ Coelho \texttrademark }
   \label{fig:partial-ordering}
 \end{figure}
+
+\subsection{Exploiting Geographic Locality}
+The third important feature of GeoPaxos is that it tries to exploit the geographic locality of the objects. Whenever clients perform operations on data objects of the system, we would often expect to see a certain degree of locality. In GeoPaxos the state and its objects are not sharded, but instead each object is handled by one or more groups, which means that operations must be ordered by said groups which can be placed in different geographic areas. This means that if we choose the groups that are closer to the region with the highest number of operations for a each object, we will be able to reduce the latency for the majority of operations, improving the performance. Furthermore, if an object is handled by multiple groups but some operation does not conflict with other operations, then we will use the preferred partition, which is the closest group that has this object.
