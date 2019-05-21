@@ -1,23 +1,24 @@
 \chapter{GeoPaxos with B+ Tree}\label{sec:geopaxos-with-b+tree}
-Now that we have discussed the needed background, we can move onto the next step: using a B+ Tree on top of GeoPaxos to store the data objects. A b+tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentically replicated in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and change the whole structure of the tree.
+Now that we have discussed the needed background, we can move onto the next step: using a B+ Tree on top of GeoPaxos to store the data objects. A b+tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentical in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and cause further modifications up to the root.
 
-Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of operation. In GeoPaxos the objects are assigned to one or more groups, depending on the type, number and origin of accesses. Of these groups, one will also be chosen in each replica to be the preferred partition for the operation, usually based on geographic location. There has to be a moment when these groups are decided and calculated for each object in the B+ Tree. For this, we have a command called repartition. The command takes the workload of an object, which is the number of reads and writes from each group on this object, and a graph that represents the geographic location of the various replicas. It then calculates the optimal placement of the object in the groups, that with the given workload would give us the minimum average latency. This operation can take be a big performance bottleneck, since it has to be executed for every object in the tree, and since we have to consider every combination of groups it scales exponentially on the number of groups. We therefore want to find a fast way to perform this operation so that we still get the right assignment of objects in a short amount of time.
+Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of operation. In GeoPaxos the objects are assigned to one or more groups, or partitions, depending on the type, number and origin of accesses. Of these groups, one will also be chosen in each replica to be the preferred partition for the operation, usually based on geographic location. There has to be a moment when these groups are decided and calculated for each object in the B+ Tree. For this, we have a command called repartition. The command takes the workload of an object, which is the number of reads and writes from each group on this object, and a graph that represents the geographic location of the various replicas. It then calculates the optimal placement of the object in the groups, that with the given workload would give us the minimum average latency.
 
-In this chapter we will first explain what a B+ Tree is, how it works and what are its advantages and disadvantages. We will then describe the specific B+ Tree used in our application. Then we will go over the various approaches that were attempted to improve the performance of the repartition optimization, followed with tests on the performance of the repartition only and finally with GeoPaxos as well.
+This operation can take be a big performance bottleneck, since it has to be executed for every object in the tree, and since we have to consider every combination of groups it scales exponentially with the number of groups. We therefore want to find a fast way to perform this operation so that we still get the right assignment of objects in a short amount of time.
+
+In the following sections of this chapter we will first explain what a B+ Tree is, how it works and what are its advantages and disadvantages. We will then describe the specific B+ Tree used in our application. Then we will go over the various approaches that were attempted to improve the performance of the repartition optimization, followed with tests on the performance of the repartition operation only and finally with GeoPaxos as well.
 
 \section{B+ Tree}\label{sec:b+tree}
-The B+ Tree is the data structure that was chosen to store the data in the geo-replicated servers. 
-But what is a B+ Tree? To answer that, let us first go over what a normal B-Tree looks like. 
+The B+ Tree is the data structure that was chosen to store the data in the geo-replicated servers. Since the B+ Tree is a special case of a B-Tree, let us quickly mention what a B-Tree is.
 
-A B-Tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of 2 like in a binary search tree. Its advantage is that one node can point to a multitude of nodes as its children, making it more efficient to retrieve large amounts of data at once, and at the same time increasing the branching factor. Also, its time complexities for search, insertion and deletion are still $O(log n)$.
+A B-Tree is a self-balancing data structure; it is a more general version of a binary search tree, since it allows nodes to have an arbitrary number of children, instead of two like in a binary search tree. Its advantage is that one node can have an increased number of children (this number being called the \emph{branching factor}), making it more efficient to retrieve large amounts of data at once. Also, its time complexities for search, insertion and deletion are still $O(log n)$.
 
-A B+ Tree is similar to a B-Tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+ Tree can be quite high, particularly compared to a B-Tree. In our implementation, we use a branching factor of $b=100$.
+A B+ Tree is similar to a B-Tree, but all its data items are stored at the leaves of the tree. It has three types of nodes: the root node, the inner nodes and the leaves. The leaves are the nodes at the lowest level of the tree, which we call level 0, that can only point to data items; inner nodes can be found from levels higher than 0, and they can point to other inner nodes or to leaf nodes. The root is a special case, as it is initially a leaf node when the tree is empty, but when the tree starts to fill up it will act as an inner node. Also, the branching factor of a B+ Tree can be quite high, particularly compared to a B-Tree. In our implementation, for example, we use a branching factor of $b=100$.
 
 The main advantage of the B+ Tree, similarly to a B-Tree, is still when it comes to accessing big amounts of data at once. Say, for example, that we want to perform some operation on a range of elments. Since the data items are all at the leaves and grouped together, we can retrieve at once hundreds of data items with few operations.
 
-Say that we have a branching factor of $b$. Leaf nodes and inner nodes can have a number of children between $\lceil b/2 \rceil$ and $b$. this means that in our implementation, with $b=100$, leaf nodes and inner nodes will always have between 50 and 100 children. The exception is the root, which initially will have only one children, and it will act as a leaf. Once it has $b-1$ data items, two inner nodes are created, they become children of the root and they get half of the data items each; at this point, the root will start acting like an inner node, with a minimum of 2 children up to $b$.
+Give a branching factor of $b$, leaf nodes and inner nodes can have a number of children between $\lceil b/2 \rceil$ and $b$. this means that in our implementation, with $b=100$, leaf nodes and inner nodes will always have between 50 and 100 children. The exception is the root, which initially will have only one children, and it will act as a leaf. Once it reaches $b-1$ data items, two inner nodes are created, they become children of the root and they get half of the data items each; at this point, the root will start acting like an inner node, with a minimum of 2 children up to $b$.
 
-The splitting of nodes is similar to other self-balancing trees: when a node reaches the maximum number of children allowed by the branching factor, a new node is created, and half of the children of the full node are given to the new node. Since then the new node has to be appended to the parent's children, a split may propagate up to the root of the tree.
+The splitting of nodes is similar to other self-balancing trees: when a node reaches the maximum number of children allowed by the maximum branching factor, a new node is created, and half of the children of the full node are given to the new node. Since then the new node has to be appended to the parent's children, a split may propagate up to the root of the tree.
 
 \begin{figure}[!htb]
     \centering
@@ -26,7 +27,7 @@ The splitting of nodes is similar to other self-balancing trees: when a node rea
     \label{fig:b+tree}
 \end{figure}
 
-[add characteristics from wiki?]
+% [add characteristics from wiki?]
 
 \subsection{B+ Tree Implementation}\label{sec:b+tree-implementation}
 For our application, the basic B+ Tree needs to have some extra characteristics added to it. 
@@ -40,9 +41,10 @@ First of all, each node (root, inner and leaf nodes) will store statistics based
   \label{fig:b+tree_path}
 \end{figure}
 
-These statistics will be used as workload when the repartition will be executed. Once the repartition is performed, the statistics will be updated with the formula:
+These statistics will be used as \emph{workload} when the repartition will be issued. Once the repartition is performed, the statistics will be updated with the formula:
 $$ current\_statistics = \alpha \cdot old\_statistics + (1-\alpha) \cdot new\_statistics $$
-Where the old statistics are the ones gathered until the past repartition, and the new statistics are the ones between the past repartition and the current one.
+Where the old statistics are the ones gathered until the past repartition, and the new statistics are the ones between the past repartition and the current one (See Figure \ref{fig:statistics}).
+Alpha is the aging factor, which determines how much importance we give to the old and new statistics. a small alpha gives more weight to recent ones, but it also makes the system more susceptible to unexpected variations in the workloads.
 
 \begin{figure}[!htb]
   \centering
@@ -51,23 +53,22 @@ Where the old statistics are the ones gathered until the past repartition, and t
   \label{fig:statistics}
 \end{figure}
 
-Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we do not know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that keys that are close to each others will have similar statistics.
+Furthermore, whenever a node is full and it has to split, its statistics are halved evenly between the two nodes. This is because we do not know which statistics correspond to which data item in particular, but we can assume that there is a decent chance that objects that are close to each others will have similar statistics, meaning that we expect them to have good locality.
 
-The second thing that we need to store in the nodes of our B+ Tree are the partitions. In particular, we need to store both the partitions that take care of each node, and the preferred partition in case there are multiple partitions to choose from. Initially, each new node will be replicated to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the following operation on each object, until the next repartition. 
+The second thing that we need to store in the nodes of our B+ Tree are the partitions. In particular, we need to store both the \emph{partitions} that take care of each node and the \emph{preferred partition} in case there are multiple partitions to choose from. Initially, each new node will be assigned to all partitions of the system. This is to make sure that all clients will initially have the same availability of the data items. Once we issue a repartition, the algorithm will calculate the optimal partitions for each node based on the workload. These optimal repartition will be used to know which replicas to involve in the subsequent operations on each object, until the next repartition.
 
-If a node splits, the new node will inherit the partitions from the full node. This is again a heuristic, based on the high likelihood that close keys will have similar accesses.
+If a node splits, the new node will inherit the partitions from the full node. This is again a heuristic, based on the high likelihood that close objects will have similar accesses.
 
 \subsection{System Implementation}\label{sec:system-implementation}
-The implementation of the B+ Tree data structure, the repartition algorithms and the further code necessary to use this on top of GeoPaxos was written in C++. Since this is built on top of the GeoPaxos library, there is also the requirement for the libraries needed by GeoPaxos itself, in particular libevent[link] for the networking part, libpaxos for consensus[link] and libmcast[link] for atomic multicast.
+The implementation of the B+ Tree data structure, the repartition algorithms and the further code necessary to use this structure on top of GeoPaxos was written in C++. Since this is built on top of the GeoPaxos library, there is also the requirement for the libraries needed by GeoPaxos itself, in particular libevent[link] for the networking part, libpaxos for consensus[link] and libmcast[link] for atomic multicast.
 
 \section{Optimization Approaches}\label{sec:optimization-approaches}
-In this section we will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. We will then go over the various approaches that were attempted to improve the repartition optimization. 
+In this section we will first explain in detail how we calculate the optimal group assignment of data objects to the partitions based on the workload. We will then go over the various approaches that were attempted to improve the repartition process. 
 
 \subsection{Optimal Partitions Algorithm}\label{sec:optimal-partitions-algorithm} 
-!!! hard to read, ugly
-The simplest algorithm to implement is the one that compares all the possible combinations of partitions and picks the best one. While this algorithm will give the optimal assignments for minimum average latency for a certain workload, it is also the one that takes the longer amount of time. We will use the performance of this algorithm as a [starting point?] to compare our later algorithms with.
+The simplest algorithm to come up with is the one that compares all the possible combinations of partitions and picks the best one. While this algorithm will give the optimal assignments for minimum average latency for a certain workload, it is also the one that takes the largest amount of time. We will use the performance of this algorithm as a benchmark to compare against our later algorithms.
 
-The algorithm goes top to bottom and it calculates the partitions for each node. For each node, we get the workload, that may looks as follows:
+The pseudocode of this algorithm can be found in Algorithm \ref{alg:all-combinations}. This algorithm goes top to bottom and it calculates the partitions for each node. The workload of a node will have a structure similar to the one shown in Table \ref{tab:workload-example}.
 
 \begin{table}[!htb]
   \centering
@@ -79,10 +80,10 @@ The algorithm goes top to bottom and it calculates the partitions for each node.
     \textbf{Writes} & 32 & 10 & 93 \\
     \hline
   \end{tabular}
-  \caption{Example of a possible workload of a node in a case with 3 groups. The node counts the number of read and write operations received from each group, to be used for the repartition algorithm.}\label{tab:workload-example}
+  \caption{Example of a possible workload of a node in a case with three groups. The node counts the number of read and write operations received from each group, to be used for the repartition algorithm.}\label{tab:workload-example}
 \end{table}
 
-We then load a graph that represents the geographic placements of the various replicas, where the cost of the edges is the estimated average Round Trip Time required to send a message.
+We then load a graph that represents the geographic placements of the various replicas, where the cost of the edges is the estimated average Round Trip Time required to send a message (See Figure \ref{fig:graph}).
 
 \begin{figure}[!htb]
   \centering
@@ -91,9 +92,9 @@ We then load a graph that represents the geographic placements of the various re
   \label{fig:graph}
 \end{figure}
 
-We then proceed by looping over all possible combinations of partitions, where a partition can be taken or not taken. Obviously, at least one partition has to be taken. In the case of 3 groups, we would have to consider $2^3 -1 = 7$ combinations: $001, 010, 100, 011, 101, 110, 111$, where 1 and 0 mean that the object will be or will not be assigned to that specific replica, respectively.
+We then proceed by looping over all possible combinations of partitions, where a partition can be either taken or not taken. Logically, at least one partition has to be taken, since we need the object to be assigned to at least one group. In the case of 3 groups, we would have to consider $2^3 -1 = 7$ combinations: $001, 010, 100, 011, 101, 110, 111$, where 1 and 0 mean that the object will be or will not be assigned to that specific replica.
 
-Given the number of reads and writes for each group, and the current groups to which we're replicating this object, we multiply the number of reads by the latency with the closest replica that would have this object. For writes, we have to add the latency of all the replicas that have this object, since the operation is going to modify the data item.
+Given the number of reads and writes for each group, and the current groups to which we are replicating this object, we multiply the number of reads by the latency with the closest replica that would have this object. For writes, we have to add the latency of all the replicas that have this object, since the operation is going to modify the data item.
 
 Also note that the result depends on the latency that we are currently considering: for example, if we are doing the calculations from the point of view of a replica that will not have this object, each read will have to go to a different replica; therefore we have to consider the costs from the point of view of all the replicas.
 
@@ -161,25 +162,26 @@ Once we have gone over all the combinations, we pick the one with the lowest cos
   \end{algorithm}
 
 \subsection{Fixed-Size Buckets}\label{sec:Fixed-Size buckets}
-One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for. Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure ~\ref{fig:Fixed-Size-buckets}.
+One of the ideas to improve the performance of the repartition is to try to reduce the number of nodes that we have to do the calculations for.
 
-As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is not particularly frequent, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
+Since the tree is divided in levels, the idea is to group nodes of different levels in what we call \emph{buckets} and do an aggregated calculation of the optimal partition assignment for the whole bucket. An example of a bucket can be seen in figure ~\ref{fig:Fixed-Size-buckets}. The pseudocode can be found in Algorithm \ref{alg:fixed-size}.
 
-There are also multiple ways to group things in the case where we have an odd number of levels. Since we are using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. [put pic] The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of odd levels.
+As a reminder, whenever a operation is performend on an object, the statistics of the tree are updated along the whole path from the root to the node that handles this object. This means that in general, the parent node will have the aggregated statistics for all its children nodes (this may not always be the exact case when the parent node splits, but this is quite rare, and even when it happens the statistics of the split nodes are good approximations of the real statistics).
+
+There are also multiple ways to group nodes in the case where we have an odd number of levels. Since we are using buckets of two levels, we could either allow the root node to be a bucket of 1 level, or let the leaves be buckets of 1 level. Or, we could have the root be the only bucket to be allowed to have 3 levels. The first one would not reduce the number of saved calculations by much, since most nodes are on level 0; the other two options make virtually no difference, as they only affect the level with the least amount of nodes. We decided to go with the second option, allowing the root node to be in a bucket of its own in case of an odd number of levels.
 
 It is also important to remember that this improvement affects only the number of objects, not the groups; therefore, in the case where we have $n$ objects and $m$ groups, this would improve on the linear number of objects $n$ but it would not affect the number of combinations, which grows as $2^m$.
 
-In general, given a branching factor of $b$ of and objects $n$, the number of calculations we would be doing would be around $\approx\cfrac{n}{b}$ as the tree grows, since we are approximating all the calculations at level 0, which in a big tree is by far the level with the most nodes.
+In general, given a branching factor of $b$ of and objects $n$, the number of calculations we would be doing would be around $\approx\cfrac{n}{b}$ as the tree grows, since we are approximating all the calculations at level 0, which is by far the level with the most nodes.
 
 This approach will generally work best in cases where we have a great amount of locality, meaning that the heuristic of grouping nodes together expecting them to have similar behavior would be mostly correct. Even in that case, though, we expect to still see repartitioning results that are not optimal.
 
-[performance?]
-[specify how many calculations we are saving?]
+[should I be more precise with the number of calculations saved?]
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/grouped-levels.png}
-  \caption[caption]{ A visualization of how the levels are grouped. The nodes in the same triangles are going to have the same partitioning, based on the aggregated statistics (which are going to be the statistics of the highest-level node). The root is in its own bucket, since we have an odd number of levels. Also note that only a few nodes are shown too keep it simple.}
+  \caption[caption]{ A visualization of how the levels are grouped. The nodes in the same triangles are going to have the same partitioning, based on the aggregated statistics (which are going to be the statistics of the highest-level node). The root at level 2 is in its own bucket, since we have an odd number of levels. Also note that only a few nodes are shown too keep the visualization simple.}
   \label{fig:Fixed-Size-buckets}
 \end{figure}
 
@@ -250,13 +252,13 @@ This approach will generally work best in cases where we have a great amount of 
   \end{algorithm}
 
 \subsection{Variable-Size Buckets}\label{sec:Variable-Size buckets}
-The idea of the Fixed-Size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also approximates the problem too much. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once more, and because the high branching factor is one of the main reasons to use a B+ Tree. 
+The idea of the Fixed-Size buckets is interesting, as it greatly reduces the number of nodes we have to account for, but it also generalizes the situation, grouping the nodes regardless of their workload. Reducing the branching factor would not be a solution, as it would just increase the number of nodes once again, and because the high branching factor is one of the main reasons to use a B+ Tree. 
 
-An alternative approach is to to have a variable, or dynamic, size of buckets. The idea is to group in two or more levels the nodes that have a low amount of statistics, and instead do the optimal calculations for the nodes with many operations associated to them. The idea is that approximating the nodes with few operations would not hinder the performance by much, as the object associated to those nodes will not be accessed often by the clients, while instead the objects that are used often will have their optimal partitions.
+An alternative approach is to to have a variable, or dynamic, size of buckets. The idea is to group in two or more levels the nodes that have a low amount of statistics, and instead do the optimal calculations for the nodes with many operations associated to them. The idea is that approximating the nodes with few operations would not hinder the performance by much, as the object associated to those nodes will not be accessed often by the clients, while instead the objects that are accessed often will have their optimal partitions. 
+The pseudocode for this method is in Algorithm \ref{alg:variable-size}.
 
-It is also more likely for the nodes towards the leaves to be approximated, since the parents will have the aggregated statistics of all their children.
 
-One challenge of the Variable-Size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we will have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$[random number], then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
+One challenge of the Variable-Size buckets approach is to figure out when it is worth doing the full calculations and when it is better to group in buckets. In the case where the operations are evenly distributed among all children of a node, we would expect have that the statistics of a child node will be around $\cfrac{1}{b}$ of the parent node. Then, we could say that if, for example, a child node has less than $\cfrac{1}{b^2}$, then we should place it in a bucket; but finding the right number depends on many variables and on the system at hand, therefore finding a good value would have to be fine-tuned depending on the application.
 
 \begin{figure}[!htb]
   \centering
@@ -335,11 +337,13 @@ One challenge of the Variable-Size buckets approach is to figure out when it is 
 \subsection{Hot Groups}\label{sec:hot-groups}
 Another option is to try to reduce the number of combinations that we have to consider for each node. Since the complexity grows exponentially with the number of groups, if we are able to discard some combinations before we calculated their actual cost, then we should have a greater improvement compared to the optimizations that reduce the number of nodes.
 
-One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment would not replicate the objects to the partition/group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
+One idea to do this is as follows: given a workload, there is a chance that one or more groups will have fewer operations on the current node compared to other groups. Then, there is a big chance that the final partition assignment would not assign the objects to the group with fewer operations, since the gain of replicating the object to said partition would be less than the added cost of it.
 
-The gain/cost of replicating to a group with few operations also depends on the ratio between read/write operations, obviously: with many reads we would want to assign the object to all groups, while with many writes we would want to reduce the number of group assignments, as with every write we would have to coordinate between all groups involved. In general, though, such a system is better suited for applications with more reads than writes, therefore our assumption of discarding groups with few operations still holds.
+The cost of replicating to a group with few operations also depends on the ratio between read and write operations: with many reads we would want to assign the object to all groups, while with many writes we would want to reduce the number of group assignments for each object, as with every write we would have to coordinate between all groups involved. In general, though, such a system is better suited for applications with more reads than writes, therefore our assumption of discarding groups with few operations still holds.
 
-The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the ``Hot Groups''). Then, when we are going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the Hot Groups. As before, finding the ideal threshold is no easy task; a higher threshold would discard more combinations making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance gains. 
+The way to implement this is fairly simple: with the workload at hand, we find the group or groups with the highest number of operations (the \emph{Hot Groups}). Then, when we are going through all the possible combinations of groups, we discard those that would assign the object to groups with much lower operations than the Hot Groups.  See Algorithm \ref{alg:fixed-size} for the pseudocode.
+
+As before, finding the ideal threshold is not an easy task; a higher threshold would discard more combinations, making the computations faster but possibly lose a lot of accuracy, while a lower threshold might only skip very few combinations giving us very small performance improvements. 
 
 
 \begin{table}[!htb]
@@ -352,7 +356,8 @@ The way to implement this is fairly simple: with the workload at hand, we find t
     \textbf{Writes} & 32 & 10 & 93 \\
     \hline
   \end{tabular}
-  \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:workload-example}
+
+  \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:hot-groups-example}
 \end{table}
 
 \begin{algorithm}
@@ -429,33 +434,34 @@ The way to implement this is fairly simple: with the workload at hand, we find t
   \end{algorithm}
 
 \subsection{LRU Caching}\label{sec:lru-caching}
-[maybe start with a complete description, then go bit by bit]
-This method makes use of two important aspects that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition. The first one is given two identical workloads, the partitions assignment will be the same, which means that we can in theory cache the results. The second one is that of all the possible combinations of workloads, most of them are very unlikely to be met during execution.
+This method, which we call Least Recently Used Caching, is about storing the partitions assignments using the workloads as keys. The nice thing of this approach is that it's an extra feature that can be used with any of the previously presented approaches.
+
+The idea of storing the results makes use of two important aspects that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition. The first one is given that two identical workloads, the partitions assignment will be the same, which means that we can in theory cache the assignments. The second one is that of all the possible combinations of workloads, many of them are very unlikely to be met during execution.
 
 \subsubsection{Reusability of computations}\label{sec:Reusability-of-computations}
-As long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this will not change while our system is running, and in a real world application too it should not change often, as it would mean that we either change completely a server or that we move them around. 
+As long as the geographic structure of our whole system does not change, then the partition assignment will always be the same whenever the statistics of the nodes are the same. The geographic information is stored in the graph that contains the latencies between the various replicas in the respective regions; this will not change while our system is running, and in a real world application it should not change often, as it would mean that we either change completely a server or that we moved it somewhere else.
 
 This means that we may end up doing the same calculations multiple times, getting the same results each time. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
 
-Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can get them in $a\approx O(1)$ time. This spawns two issues.
+Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can retrieve the results in $a\approx O(1)$ time. This generates two more subtleties.
 
-How do we define the key? we know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the statistics are unbounded, and since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each others would give us the same assignment of partition, meaning that we would have multiple keys for the same values for no reason.
+The first one is how to define keys for the entries map. we know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the statistics are unbounded. Furthermore, since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each others would give us the same assignment of partition, meaning that we would have multiple keys for the same values for no reason.
 
-These two issues could lead us to having a data structure that grows to an uncontrollable size.
+These two issues could lead us to having a data structure that grows to an unmanageable size.
 
-What we can do instead is to encode the workload in a new type of key. Remember that for each group we have a value for reads and writes. For each group, we will calculate the read write/ratio and the update ratio. The read/write ratio is just the amout of total operations for each group compared to the total number of operations for the whole node. For example, with the example workload of table~\ref{tab:workload-example}, we would have read write ratios of:
-$$ 11/14, 3/14 $$
+What we can do instead is to encode the workload in a new and smarter type of key. Remember that for each group we have a value for reads and writes. For each group, we will calculate the normalized workloads and the update ratios. The normalized workload is the amount of total operations for each group compared to the total number of operations for the whole node. For example, with the example workload of table~\ref{tab:workload-example}, we get normalized workloads approximated to two digits as: 
+$$ \cfrac{182}{862} \approx 0.21\ \ \ \ \ \ \ \ \cfrac{47}{862} \approx 0.05\ \ \ \ \ \ \ \ \cfrac{633}{862} \approx 0.73$$
 
 Then we calculate the update ratio for each group, which is the ratio between reads and writes for said group. Again, with the workload of table~\ref{tab:workload-example} we would get:
-$$1/11 2/3 $$
+$$ \cfrac{32}{182} \approx 0.18\ \ \ \ \ \ \ \ \cfrac{10}{47} \approx 0.21\ \ \ \ \ \ \ \ \cfrac{93}{633} \approx 0.15$$
 
-The ratios can then be approximated to different precisions, depending on our needs. If we normalize them from 0 to 9 we would have a far smaller data structure, but it would also be a quite big approximation. 0 to 99 would give us an acceptable approximation without giving us humongous keys, as long as we do not have a lot of groups. 
+The ratios can be approximated to different precisions, depending on our needs. If we normalize them from 0 to 9 we would have a far smaller data structure, but it would also be a quite big approximation. 0 to 99 would give us an acceptable approximation without giving us humongous keys, as long as we do not have a lot of groups. In our example calculations we approximated them to two digits because it makes it easy to get values in 0-99 range.
 
-Finally, we get the key for this workload by concatenating the values:
-$$ K = RW_1 U_1 RW_2 U_2 $$
-
-Therefore our final key, when using centile precision, would be:
-$$ K = $$
+Finally, we get the key for this workload by concatenating the normalized values:
+$$ K = RW_1 U_1 RW_2 U_2 RW_2 U_2 = K_1 K_2 K_3 $$
+Therefore our partial keys and final key, when using centile precision, would become:
+$$ K_1 = 2118\ \ \ \ \ \ \ \ K_2 = 0521\ \ \ \ \ \ \ \ K_3 =7315 $$
+$$ K = 211'805'217'315 $$
 
 \begin{table}[!htb]
   \centering
@@ -466,19 +472,24 @@ $$ K = $$
     \textbf{Reads} & 150 & 37 & 540 \\
     \textbf{Writes} & 32 & 10 & 93 \\
     \hline
+    \textbf{Centile Normalized Workload} & 21 & 05 & 73 \\
+    \textbf{Centile Update Ratio} & 18 & 21 & 15 \\
+    \textbf{Key} & 2118 & 0521 & 7315 \\
   \end{tabular}
-  \caption{Example of a possible workload of a node in a case with 3 groups. In this case, group 3 would be the hot group, since it is the node with more total operations. Depending on the threshold, we could discard only group 2 or both group 1 and 2 from the list of possible assignment combinations; this would reduce the number of combinations for this node from 7 to 3 or 1, respectively.}\label{tab:workload-example}
+  \caption{Example of a possible workload of a node in a case with 3 groups, with the respective Normalized Workloads and Update Ratios necessary to build the key used for the LRU caching system.}\label{tab:workload-example}
 \end{table}
 
 
-[is there another issue?]
-
 \subsubsection{Workloads Combinations}\label{sec:Workloads-combinations}
-Our workload to key encoding now gives us a fair improvement, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even that big. We then have to further limit the number of keys. 
+Our workload to key encoding now gives us a fair improvement, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even particularly big. We therefore have to limit the number of keys. 
 
-The hindsight that can help us improve on what we have is that many of those keys will never be used; for example, the key with all 0s does not represent any workload we could have. Also, even a key with a possible workload could be very unlikely and rare case, and therefore we could just not store it and just do the recalculation the few times we do encounter such a workload. 
+The notion that can help us improve on what we have is that many of those keys will never be used. For example, the key with all 0s does not represent any workload that we could possibly have. Furthermore, even a key with a possible workload could be a very rare occurrence, and therefore we could just avoid to store it and instead do the recalculation the few times we do encounter such a workload. 
 
-A possible way to exploit this is by implementing a sort of Least Recently Used (LRU) approach: we can limit the maximum number of keys that we store in our data structure, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the efficiency of the data structure: we still want to be able to retrieve and add a key in amortized constant time. Initially we were just using an unlimited size data structure, in particular a HashMap. While it was working quite well in improving the performance of the algorithm, we also had to consider the possible limitations of the system. We have a very big key space, which means that in case that the map gets completely filled up, it is going to require an enormous amount of space, which is unfeasible to handle. Therefore, we decided look for alternative data structures. We decided on using an LRU because it limited the maximum size of the cache, and because it was possible to build one that would still have constant (amortized) retrieval, addition and update of the keys, therefore not slowing down the performance that we had with the simple HashMap.
+We therefore came to the conclusion that a simple map, like the HashMap that we had initially thought of using to store the partition assignments, is clearly not enough by itself.
+
+A possible way to circumvent this issue is by implementing something like a Least Recently Used (LRU) data structure: we can limit the maximum number of keys that we keep in our cache, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the performance of the data structure, though: we need to be able to retrieve and insert a key in (amortized) constant time.
+
+% Initially we were just using an unlimited size data structure, in particular a HashMap. While it was working quite well in improving the performance of the algorithm, we also had to consider the possible limitations of the system. We have a very big key space, which means that in case that the map gets completely filled up, it is going to require an enormous amount of space, which is unfeasible to handle. Therefore, we decided look for alternative data structures. We decided on using an LRU because it limited the maximum size of the cache, and because it was possible to build one that would still have constant (amortized) retrieval, addition and update of the keys, therefore not slowing down the performance that we had with the simple HashMap.
 
 The LRU is constructed by using two simpler data structures:
 \begin{itemize}  
@@ -488,9 +499,9 @@ The LRU is constructed by using two simpler data structures:
 
 Note that we could have used other types of maps, for example a TreeMap, but in our tests we saw no no clear-cut difference between the performances of the two, hence we decided to keep using the HashMap that we were using before.
 
-The map, instead of storing $<Key, Value>$ as before, now stores $<Key, Pair<Value, List_value>>$.
+The map, instead of storing $<Key, Value>$ as before, now stores $<Key, Pair<Value, List_value>>$. The items list instead contain the keys of the object they refer to. A visualization of this can be seen in Figure \ref{fig:lru}.
 
-Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list (the $List_value$) to the front, since it was the most recently used.
+Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list (which is referenced by the $List_value$) to the front, since it was the most recently used.
 
 When we want to insert an item and the cache is full, we take the item at the tail of the list; this item contains the map key of the item it corresponds to, therefore to delete the item we just delete from the map the item that corresponds to the key, and then we pop the tail of the list. 
 The newly inserted item will then be added to the map, and the $List_value$ will be added to the front of the list.
@@ -571,9 +582,9 @@ The newly inserted item will then be added to the map, and the $List_value$ will
 \end{figure}
 
 \subsubsection{LRU Warmup}\label{sec:warmup}
-The main issue of using an LRU-style caching is that initially, the performance will be as bad as having no optimization at all. This is because until we actually have any previous calculation cached, we will still have to do all the calculations one by one. 
+The main issue of using an LRU-style caching is that initially, the performance will be as bad as having no caching optimization at all. This is because until we actually have any previous calculation cached, we will still have to do all the calculations one by one. 
 
-One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better gains. For example, we can use the Hot Groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The Hot Groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the Hot Groups optimization would still be useful when we have a cache miss.
+One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better performance gains. For example, we can use the Hot Groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The Hot Groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the Hot Groups optimization would still be useful when we have a cache miss.
 
 A possible flaw of this approach is that if one of our optimizations makes use of important approximations, then the values we store in our cache might be far from optimal; therefore, we have to be careful not to exaggerate with the approaches used. This could also be approached in a hybrid way; it is possible to use the approximation methods while the cache is empty, so that we speed up the first repartitions. Then, once the cache is full enough, we can start using the All-Combinations method whenever we have a cache-miss, so that we can start using the optimal values without having a noticeable impact on the performance of the system.
 
@@ -581,13 +592,14 @@ Lastly, another alternative solution to manage the bad performance of a cold LRU
 
 \section{Optimization Tests}\label{sec:optimization-tests}
 In this section we will test and compare all the different approaches to perform the repartition that were presented in the previous section. 
+
 In particular, we will be focusing on the time it takes to complete the repartition and on the difference of the actual assignment of partitions of the different nodes of the tree.
 
-For each case, we will use an initially empty B+ Tree of maximum slot use equal to 100. We then have variables $ITEMS$, with possible values $100'000$, $500'000$ and $1'000'000$, and $GROUPS$, with values $3, 4, 8$. The graph shape used for the groups is simmetrical, meaning that we give the same latency between all the groups.
+For each case, we will use an initially empty B+ Tree of maximum slot-use, or branching factor, equal to 100. We then have variables $ITEMS$, with possible values $100'000$, $500'000$ and $1'000'000$, and $GROUPS$, with values $3, 4, 8$. The graph shape used for the groups is simmetrical, meaning that we give the same latency between all the groups.
 
-We start each test by inserting in the B+ Tree a number of new values equal to $ITEMS$, distributed on an interval from 0 to $2\cdot ITEMS$. We then repartition, so that the statistics get reset to avoid having these inserts affecting the statistics of the repartition we actually want to test. After this first repartition, we perform, for each group, $2\cdot ITEMS$ operations, with a 50\% ratio of writes and reads. Finally we perform a second repartition, which will be timed to see how good the repartition algorithm is. Since we perform operations on the whole range of keys, it means that we will be repartitioning all the nodes at once, which is the quite rare worst-case performance.
+We start each test by inserting in the B+ Tree a number of new values equal to $ITEMS$, distributed on an interval from 0 to $2\cdot ITEMS$. We then repartition, so that the statistics get reset. This avoids that these inserts affect the statistics of the repartition we actually want to test. After this first repartition, we perform, for each group, $2\cdot ITEMS$ operations, with a 50\% ratio of writes and reads. Finally we perform a second repartition, which will be timed to see how good the repartition algorithm is. Since we perform operations on the whole range of keys, it means that we will be repartitioning all the nodes at once, which is the quite rare worst-case performance.
 
-For the last two test cases, the ones regarding the LRU caching, we perform the test differently, since it is a different type of optimization; we do the setup part of the test as before, but we repeat the part of performing operations and repartitioning one hundred times. This is because the LRU is an extra feature that can be paired with any of the previous algorithms, and its usefulness only shows once we have performed multiple repartitions.
+For the last two test cases, the ones regarding the LRU caching, we perform the test differently, since it is a different type of performance optimization. We do the setup part of the test as before, but we repeat the part of performing operations and repartitioning one hundred times. This is because the LRU is an extra feature that can be paired with any of the previous algorithms, and its usefulness only shows once we have performed multiple repartitions.
 
 % [put picture that shows client loads/skews during tests]
 % \begin{figure}[!htb]
@@ -597,8 +609,9 @@ For the last two test cases, the ones regarding the LRU caching, we perform the 
 %   \label{fig:all}
 % \end{figure}
 
+\newpage
 \subsection{All-Combinations}\label{sec:All-Combinations}
-This scenario will be used as a benchmark to which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload, but it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently to make sure that the current partitioning matches the load of the system.
+This scenario will be used as a benchmark against which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload. At the same time it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently, to make sure that the current partitioning matches the load of the system.
 
 \begin{figure}[!htb]
   \centering
@@ -607,10 +620,12 @@ This scenario will be used as a benchmark to which we will compare all the other
   \label{fig:all}
 \end{figure}
 
-As we can see in figure~\ref{fig:all}, the performance slows down linearly in the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition quickly becomes too big, even with a relatively small tree.
+\subsubsection{Performance}
+As we can see in figure~\ref{fig:all}, the performance slows down linearly with the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition becomes quickly too big, even with a relatively small tree.
 
+\newpage
 \subsection{Fixed-Size Buckets Tests}\label{sec:Fixed-Size buckets-tests}
-This approach groups the nodes in ``buckets'' of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the one of their parent node.
+This approach groups the nodes in \emph{buckets} of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of a factor of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the ones of their parent node.
 
 \begin{figure}[!htb]
   \centering
@@ -626,12 +641,14 @@ This approach groups the nodes in ``buckets'' of size two, meaning that the node
   \label{fig:hot}
 \end{figure}
 
-As expected, the time required to perform the repartitions is much less compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes, 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the only valid reason to use this approach is when the time of repartition is of much greater importance compared to the its precision.
+\subsubsection{Performance}
+As expected, the time required to perform the repartitions is greatly reduced compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes we have that 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the main reason to use this approach appears when the time of repartition is of much greater importance compared to its precision.
 
+\newpage
 \subsection{Variable-Size Buckets Tests}\label{sec:Variable-Size-buckets-tests}
 This approach is slightly more refined compared to the Fixed-Size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the Fixed-Size, we would expect the timings to be worse than the previous approach but still better than the All-Combinations one. We would also expect to see better partitions assignments.
 
-For this method we also have to define a threshold value that is used to decide when it is worth computing the combinations for a node and when it is not. For our tests, we used as a threshold value $THRESHOLD = 0.8$, which means that if a node accounts for at least 80\% of the average expected workload of a single child node, then we will peform its calculations. The value given to this variable is a ``safe'' chosen mostly based on previous results and we don't expect it to be ideal by any mean; still, it should be good enough to show the behavior of this approach.
+For this method we also have to define a threshold value that is used to decide when it is worth computing the combinations for a node and when it is not. For our tests, we used as a threshold value $THRESHOLD = 0.8$, which means that if a node accounts for at least 80\% of the average expected workload of a single child node, then we will peform its calculations. The value given to this variable is a ``safe'' one chosen mostly based on previous results and we don't expect it to be ideal by any mean; still, it should be good enough to show the behavior of this approach.
 
 \begin{figure}[!htb]
   \centering
@@ -640,12 +657,16 @@ For this method we also have to define a threshold value that is used to decide 
   \label{fig:dynamic}
 \end{figure}
 
-Based on the results, this approach does not perform as well as expected: the performance is slightly better than the All-Combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the fixed approach rather than the Variable-Size one.
+\subsubsection{Performance}
+Based on the results, this approach does not perform as well as expected: the performance is slightly better than the All-Combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the Fixed-Size approach rather than the Variable-Size one, but that is just a conjecture.
 
+\newpage
 \subsection{Hot Groups Tests}\label{sec:hot-groups-tests}
-The Hot Groups approach aims at discarding combinations of groups, rather than nodes like the previous ones. This means that we expect to see an increasing gain in performance once we increase the number of groups. In general we expect this group to perform similar to the All-Combinations method in the case with few groups, but we should also have a much more linear increment in time with the tests with more groups. We should also get better partition assignments compared to the buckets approaches, since we expect the heuristic of discarding groups to be more reliable than the ones used previously.
+The Hot Groups approach aims at discarding combinations of groups, rather than nodes like the previous methods. This means that we expect to see an increasing gain in performance once we increase the number of groups, rather than the number of items.
 
-Like in the variable-buckets case, we have a threshold variable. This time it is used to decide if we should discard a group or not. We set the variable to $0.1$, which means that if a group has less than 10\% the statistics of the group with the most statistics of this node, then we will discard it. It is important to notice that the partitions assignment also depends on the ratio of reads and writes. We could use more complicate ways to calculate the threshold, taking into account the read/write ratio as well, but we preferred to keep the number of variables as little as possible to avoid complicating the tests.
+In general we expect this method to perform similar to the All-Combinations one in the case with few groups, but we should also have a much more linear increment in time with the tests with more groups. We should also get better partition assignments compared to the buckets approaches, since we expect the heuristic of discarding groups to be more reliable than the ones used previously.
+
+Like in the variable-buckets case, we have a threshold variable to set. This time it is used to decide if we should discard a group or not. We set the variable to $0.1$, which means that if a group has less than 10\% the statistics of the group with the most statistics of this node, then we will discard it. It is important to notice that the partitions assignment also depends on the ratio of reads and writes. We could use more complicate ways to calculate the threshold, taking into account the read/write ratio as well, but we preferred to keep the number of variables as little as possible to avoid complicating the tests.
 
 \begin{figure}[!htb]
   \centering
@@ -657,18 +678,22 @@ Like in the variable-buckets case, we have a threshold variable. This time it is
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partition_difference_hot_all.png}
-  \caption[caption]{The difference in partitions assignment between All-Combinations and Hot Groups. The differences are mostly in the number of partitions that the nodes are assigned to; The All-Combinations approach assigns the nodes to multiple partitions more often than the Hot Groups. This is because Hot Groups discards the groups with few operations, therefore not considering the partitionings with multiple groups.}
+  \caption[caption]{The difference in partitions assignment between All-Combinations and Hot Groups. The differences are mostly in the number of partitions that the nodes are assigned to. The All-Combinations approach assigns the nodes to multiple partitions more often than the Hot Groups. This is because Hot Groups discards the groups with few operations, therefore not considering the partitionings with multiple groups.}
   \label{fig:hot}
 \end{figure}
 
-In this case the results of the tests are as expected; when compared to the All-Combinations case, we see that the performance in the tests with 3 groups are very similar, with the Hot Groups approach taking around 10-20\% less time. When we move onto 4 and 8 groups though the improvement is much more noticeable, with improvements in the order of 30-40\% and up to 65\% respectively.
+\subsubsection{Performance}
+In this case the results of the tests are as expected. When compared to the All-Combinations case, we see that the performance in the tests with 3 groups are very similar, with the Hot Groups approach taking around 10-20\% less time. When we move onto 4 and 8 groups though the improvement is definitely more noticeable, with improvements in the order of 30-40\% and up to 65\% respectively.
 
-Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is half compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
+Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is halved compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
 
+\newpage
 \subsection{LRU Caching Tests}\label{sec:lru-caching-tests}
 As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the All-Combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
 
 For this test, we decided to use a cache size of 1'000'000. Obviously a bigger cache would further allow improvements on the performance, at the cost of an increased load on the memory. With this cache size, we reached a usage of approximately 450MB.
+
+We do not have a clear idea of how much the LRU will improve the results. It is hard to say if the limited size of the cache will be the bottleneck that will impede further improvements, or if we will get to the point where the mandatory calculations will become the main concern.
 
 \begin{figure}[!htb]
   \centering
@@ -677,10 +702,12 @@ For this test, we decided to use a cache size of 1'000'000. Obviously a bigger c
   \label{fig:LRU_8}
 \end{figure}
 
-The results seem really good: in 100 repartitions the computation time to $\frac{1}{10}$ of what it was initially, going below 10 seconds in the best cases. While 10 seconds is still a lot of time, we can be sure that even longer amounts of repartitions will boost the performance even more. 
+\subsubsection{Performance}
+The results seem really good: in 100 repartitions the computation time decreased to $\frac{1}{10}$ of what it was initially, going below 10 seconds in the best cases. While 10 seconds is still a lot of time, we can be sure that even longer amounts of repartitions will boost the performance even more. 
 
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
+\newpage
 \subsection{LRU with Hot Groups}\label{sec:lru-hot-groups}
 We will now test the performance of the LRU combined with the Hot Groups approach; the idea is that the Hot Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the Hot Groups. 
 
@@ -691,45 +718,47 @@ We will now test the performance of the LRU combined with the Hot Groups approac
   \label{fig:LRU_8_hot}
 \end{figure}
 
+\subsubsection{Performance}
 The results are in line with our expectations; the timing are consistently lower than the previous LRU test, both at the beginning and at the end. The percentage decrease in computation time is similar to the percentage decrease we saw without the LRU.
 
-\subsection{Results Evaluation}\label{sec:results-evaluation}
+\newpage
+\section{Repartition Results Evaluation}\label{sec:repartition-results-evaluation}
 Based on the results, we can draw some conclusions on the quality of the various methods compared against each others. 
 
-The All-Combinations approach gives us the optimal partition assignments to obtain minimum average latency, but in the case of a repartition of relevant size the time it takes is definitely too long. the combinations with 8 groups take from 10.5 to 105 seconds; we definitely cannot stop execution for that long, unless we perform repartitions very rarely.
+The All-Combinations approach gives us the optimal partition assignments to obtain minimum average latency, but in the case of a repartition of relevant size the time it takes is definitely too long. the combinations with 8 groups take from 10.5 to 105 seconds; we definitely cannot stop the execution of the system for that long, unless we perform repartitions very infrequently.
 
-The Fixed-Size buckets approach is on the other end of the spectrum; really short computation times, but it leads to great approximations in the repartition. Still, with the 8 groups, 1 million items workload, the repartition time was 2 seconds compared to 105, so it looks at least usable as a starting approach.
+The Fixed-Size buckets approach is on the other end of the spectrum; really short computation times, but it leads to great approximations in the repartition. Still, with the 8 groups, 1 million items workload, the repartition time was 2 seconds compared to 105, so it looks at least usable as a starting approach or when timing is a great concern.
 
-The Variable-Size buckets turned out to be rather disappointing; computation times slightly better than the All-Combinations, but a number of ``wrong'' assignments comparable to the fixed approach. We still believe that it was a bad test case for this method; perhaps different loads and different tresholds would lead to better results. Yet, we cannot feel encouraged to use this method given the results we have at hand.
+The Variable-Size buckets turned out to be rather disappointing. Computation times are slightly better than the All-Combinations approach, but a number of ``wrong'' assignments comparable to the Fixed-Size one. We still believe that it was a bad test case for this method; perhaps different loads and different tresholds would lead to better results. Yet, we cannot feel encouraged to use this method given the results we have at hand.
 
-The last computation optimization, the Hot Groups, performed quite well. In particular, the computational times with 8 groups are less than half compared to the All-Combinations, which is a nice improvement, and the number of wrong assignments is half of the Fixed-Size buckets. In general, it looks like the most balanced optimization.
+The last computation optimization, the Hot Groups, performed quite well. In particular, the computational times with 8 groups are less than half compared to the All-Combinations, which is a nice improvement, and the number of wrong assignments is half of the Fixed-Size buckets. In general, it looks like the most balanced optimization. This method is also particularly useful because it targets the number of group combinations, which quickly becomes an issue when we have many groups.
 
 The results get interesting when paired with the caching system. Even with the slowest computation method, the biggest workload goes from 105 seconds to less than 10 seconds in just 100 repartitions. When paired with a faster computation method, like Hot Groups, it goes even below 3 seconds. As a matter of fact, when we tried with 1000 repartitions, at the 500th one the time was around 1 second, plateauing at around 600, with around 950ms on average, and a memory usage of 1GB.
 By comparison, the one without Hot Groups reached a plateau at 400 repartitions, with an approximate time of 2-2.5 seconds per repartition.
 
-In conclusion, it looks like the way to go is definitely by exploting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
+In conclusion, it looks like the way to go is definitely by exploiting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
 
-
+\newpage
 \section{GeoPaxos Tests}\label{sec:geopaxos-tests}
 Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations.
 \subsection{Tests Setup}\label{sec:tests-setup}
-It is quite hard to even come up with tests that give us realistic workloads, but we believe that the tests performed should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
+It is quite hard to come up with tests that give us realistic workloads, but we believe that the tests we discuss in this section should give a decent idea of the cases where it performs better and the cases where it could be improved. While we could have included more combinations of tests in the report, we believe that it would have become overwhelming and more confusing rather than adding any useful extra information.
 
 The tests have a range of variables to be set, including:
 \begin{itemize}
-  \item \textbf{Number of clients (per destination group)} The number of clients that are connected to each group of the system, e.g. the number of clients for each region
-  \item \textbf{Number of threads (per client)} The number of threads used for each client entity. Increasing the number of threads boosts the maximum throughput of a single client, but each client still has to receive a reply to a previous message sent before sending a new one. During testing we keep the value in a way so that the performance of the clients is consistent, and we use a high number of threads to limit the bottleneck of message handling so that we can focus the performance on the latency of the communications
-  \item \textbf{Number of outstanding messages} The maximum number of requests that a client can have on-hold at once. If set to one, a client can only send a second request after it has received an answer for the first request
-  \item \textbf{Number of items} The total number of items, or keys, on which the clients can perform operations
-  \item \textbf{Maximum throughput (msgs/s)} The maximum number of messages that a client can send in a second
-  \item \textbf{Range of operations} The interval of keys that the client is going to perform operations on. This usually corresponds to the total number of items, but the beginning and end of the range will be shifted depending on the region of the client
-  \item \textbf{Ratio of operations} The ratio of read and write operations performed by the client
-  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure ~\ref{fig:skews})
+  \item \textbf{Number of clients (per destination group)} The number of clients that are connected to each group of the system, e.g. the number of clients for each region.
+  \item \textbf{Number of threads (per client)} The number of threads used for each client entity. Increasing the number of threads boosts the maximum throughput of a single client, but each client still has to receive a reply to a previous message sent before sending a new one. During testing we keep the value in a way so that the performance of the clients is consistent, and we use a high number of threads to limit the bottleneck of message handling so that we can focus the performance on the latency of the communications.
+  \item \textbf{Number of outstanding messages} The maximum number of requests that a client can have on-hold at once. If set to one, a client can only send a second request after it has received an answer for the first request.
+  \item \textbf{Number of items} The total number of items, or keys, on which the clients can perform operations.
+  \item \textbf{Maximum throughput (msgs/s)} The maximum number of messages that a client can send in a second.
+  \item \textbf{Range of operations} The interval of keys that the client is going to perform operations on. This usually corresponds to the total number of items, but the beginning and end of the range will be shifted depending on the region of the client.
+  \item \textbf{Ratio of operations} The ratio of read and write operations performed by the client.
+  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure ~\ref{fig:skews}).
 \end{itemize}
 
 All the clients behave in the same way. Once started, they send messages to the replica that they are connected to (at a rate depending on the variables defined above), and waits for the replies. There are some possible behaviors of clients that may not seem important at first, but that are quite important to keep under control to avoid unexpected or unwanted results from the tests.
 
-One interesting such case happens when a client, because of a period with a high throughput, has a repartition that puts a lot of objects in the region where he is at. This leads to his operations having even lower latency than before, which leads to even higher throughput than before, leading to a situation where he will be the most performant client exactly because it was performant in the past (``the rich get richer''). To handle this, we have two variables: the maximum throughput, that makes it so that after a certain point, the client cannot send more messages than a certain threshold, stopping him from ``getting richer''. Furthermore, we can increase the number of outstanding messages; while this sounds counterintuitive, having a higher outstanding limit allows slower clients to send more messages without having to wait for replies of past messages, limiting the gap between fast and slow clients. Both these settings (maximum throughput and oustading messages) could be realistic behaviours, too: common clients may not have the fastest internet speed, therefore limiting their maximum throughput, and not all requests may be dependent on each other, therefore a client will not have to wait a reply for all messages before sending new ones.
+One interesting such case happens when a client, because of a time period with a high throughput, has a repartition that puts a lot of objects in the region where he is at. This leads to his operations having even lower latency than before, which leads to even higher throughput than before, leading to a situation where he will be the most performant client exactly because it was performant in the past. To handle this, we have two variables: the maximum throughput, that makes it so that after a certain point, the client cannot send more messages than a certain threshold. Furthermore, we can increase the number of outstanding messages; while this sounds counterintuitive, having a higher outstanding limit allows slower clients to send more messages without having to wait for replies of past messages, limiting the gap between fast and slow clients. Both these settings (maximum throughput and outstanding messages) could be realistic behaviours, too: common clients may not have the fastest internet speed, therefore limiting their maximum throughput, and not all requests may be dependent on each other, therefore a client will not have to wait a reply for all messages before sending new ones.
 
 \begin{figure}[!htb]
   \centering
@@ -742,9 +771,9 @@ One interesting such case happens when a client, because of a period with a high
 \end{figure}
 
 
-Note that the zipf skew used in the tests is a slightly modified one, which we call ``smooth skew'', which is simply a skew that is mirrored after the peak point of the curve. This is because otherwise, there would be a really big difference in load between the maximum point of the curve and the minimum one, even though from a key point of view they are off by one.
+Note that the zipf skew used in the tests is a slightly modified one, which we call \emph{smooth skew}, which is simply a skew that is mirrored after the peak point of the curve. This is because otherwise, there would be a really big difference in load between the maximum point of the curve and the minimum one, even though from a key point of view they are off by one, showing very low locality.
 
-The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90,95,99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups; the tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos[cite] while it was been tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were pretty similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in table~\ref{tab:latencies}. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
+The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90,95,99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups; the tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos[cite] while it was been tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were fairly similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in table~\ref{tab:latencies}. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
 
 
 \begin{table}[!htb]
@@ -763,11 +792,11 @@ The particular setups that we will test are four types of client behaviors, that
 
 [put image similar to GeoPaxos that shows replicas and latencies]
 
-
+\newpage
 \subsection{local-skewed}\label{sec:local-skewed}
 In a geographically distributed environment, one of the possible types of workloads that we expect to see is a workload that depends on the geographic location of the clients themselves. For example, we expect that the users from Europe will access data object related to news about Europe rather than America or Asia. Another similar example can be seen in social networks, where geographically close people have a higher chance of being connected.
 
-Following this logic, the test we perform has three groups of clients in different regions that perform similar operations, but the distributions are shifted, so that they each focus on different key ranges. Figure ~\ref{fig:} shows a similar workload.
+Following this logic, the test we perform has three groups of clients in different regions that perform similar operations, but the distributions are shifted, so that they each focus on different key ranges. Figure ~\ref{fig:local-skewed-loads} shows a similar workload.
 
 Because this situation is the ideal case for GeoPaxos, we expect the performance to grow quite steadily after a few repartitions. This is because the shifted loads allow to assign the different areas to the different groups quite easily, allowing us to perform all the single group operations with almost no latency involved in the communications.
 
@@ -785,10 +814,11 @@ Because this situation is the ideal case for GeoPaxos, we expect the performance
   \label{fig:local-skewed-performance}
 \end{figure}
 
+\newpage
 \subsection{global-skewed}\label{sec:global-skewed}
 Another possible view on client behavior in geographically distributed environments is the opposite of the previous one. Instead of having ``local loads'' that depend on the geographic locations of the clients, we could instead have one global load that is shared among all the clients. Examples of objects that could lead to this behavior are viral news that could interest the whole world, or famous people that have fans from all across the globe.
 
-For the test we have similar loads as before, but this time they are not shifted, meaning that all clients access the same keys with the same distribution. 
+For the test we have similar loads as before, but this time they are not shifted, meaning that all clients access the same keys with the same distribution. This can be seen in Figure \ref{fig:global-skewed-loads}.
 
 The results we expect to see is that the nodes will more or less have similar partitions, since the accesses that they receive from the clients are the similar.
 
@@ -806,8 +836,9 @@ The results we expect to see is that the nodes will more or less have similar pa
   \label{fig:global-skewed-performance}
 \end{figure}
 
+\newpage
 \subsection{constant}\label{sec:constant}
-A third possible load would be a test with a flat distribution, achievable with a skew of $alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distributeed the objects. For this case we don't expect a good performance, as probably most nodes will be assigned to the same partitions.
+A third possible load would be a test with a flat distribution, achievable with a skew of $alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distribute the objects. For this case we don't expect a good performance, as probably most nodes will be assigned to the same partitions.
 
 \begin{figure}[!htb]
   \centering
@@ -823,10 +854,11 @@ A third possible load would be a test with a flat distribution, achievable with 
   \label{fig:constant-performance}
 \end{figure}
 
+\newpage
 \subsection{variable}\label{sec:variable}
-This last test is slightly different, since this time we want to test, if and how quickly the system adapts to a change in workloads. We will initially start with a local-skewed workload like in the first case, and after some time we will shift the clients once more, effectively changing the interest in the objects for all clients. What we expect to see is that after the workload change the performance will drop, and after some repartitions the system will slowly move onto the new partitioning that increases the performance with the new workload.
+This last test is slightly different, since this time we want to test if, and how quickly, the system adapts to a change in workloads. We will initially start with a local-skewed workload like in the first case, and after some time we will shift the clients once more, effectively changing the interest in the objects for all clients. What we expect to see is that after the workload change the performance will drop, and after some repartitions the system will slowly move onto the new partitioning that increases the performance with the new workload. The change in workload is shown in Figure \ref{fig:variable-loads}.
 
-The speed at which the system adapts to the new workload is highly dependant on the $alpha$ used when updating the statistics, which defines how quickly the statistics are aging with every repartition. We use an alpha of $0.5$, as from our tests it looked like it was a fine compromise between adaptability and resiliance to unexpected behaviors. A slow adaptation to the new workload would be acceptable, since in our test we are using the most abrupt change possible, which is quite unlikely in a normal execution.
+The speed at which the system adapts to the new workload is highly dependant on the $alpha$ variable used when updating the statistics, which defines how quickly the statistics are aging with every repartition. We use an alpha of $0.5$, as from our tests it looked like it was a fine compromise between adaptability and resiliance to unexpected behaviors. A slow adaptation to the new workload would be acceptable, since in our test we are using the most abrupt change possible, which is quite unlikely in a normal execution.
 
 \begin{figure}[!htb]
   \centering
@@ -843,4 +875,5 @@ The speed at which the system adapts to the new workload is highly dependant on 
   \label{fig:variable-performance}
 \end{figure}
 
-\subsection{Results Evaluation}\label{sec:results-evaluation}
+\newpage
+\section{GeoPaxos Results Evaluation}\label{sec:geopaxos-results-evaluation}

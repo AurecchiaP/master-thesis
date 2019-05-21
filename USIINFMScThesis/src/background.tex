@@ -2,7 +2,14 @@
 In this chapter we will go over some of the fundamentals of distributed data structures and algorithms that will help to better understand the later parts of this report. In particular, we will first focus on the nuances of distributed data structures and then on  GeoPaxos, an improvement over Paxos which aims to provide better performance in geo-distributed environments.
 
 \section{Distributed Data Structures}\label{sec:distributed-data-structures}
+As we mentioned in the introduction, distributed and highly available services are becoming more and more popular every year. In a similar fashion, the importance of distributed data structures has seen a analogous growth, further pressured by the increase of data that is generated and stored every day. 
 
+Some of the biggest companies have developed their own solutions to handle distributed data(Amazon has Dynamo, Microsoft has Azure, Google has BigTable) while others used some pre-existing solutions, such as Coudchbase used by LinkedIn PayPal and Ebay, and Druid used by Netflix and Yahoo.
+
+Of these, most implementations are based on Distributed Hash Tables (DHT), which are key-value stores made for distributed environments. 
+The characteristics of DHTs are similar to those of normal Hash Tables, but with extra features that make them usable in distributed environments, such as resiliance to failure, scalability and efficient data retrieval.
+
+The drawbacks of Hash Tables are always the same, though: operations on range of values are very inefficient, making the retrieval of chunks of data quite slow. For this reason, solutions with distributed trees are also used (Baton, Pgrid, BigTable, Galaxy). These solve the shortcomings of the range operations, but can be harder to maintain in a distributed environment.
 
 \section{GeoPaxos}\label{sec:GeoPaxos}
 GeoPaxos[cite] is a protocol that achieves high performance of State Machine Replication for strongly consistent systems that are geographically distributed. 
