@@ -609,7 +609,7 @@ For the last two test cases, the ones regarding the LRU caching, we perform the 
 %   \label{fig:all}
 % \end{figure}
 
-\newpage
+\clearpage
 \subsection{All-Combinations}\label{sec:All-Combinations}
 This scenario will be used as a benchmark against which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload. At the same time it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently, to make sure that the current partitioning matches the load of the system.
 
@@ -623,7 +623,7 @@ This scenario will be used as a benchmark against which we will compare all the 
 \subsubsection{Performance}
 As we can see in figure~\ref{fig:all}, the performance slows down linearly with the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition becomes quickly too big, even with a relatively small tree.
 
-\newpage
+\clearpage
 \subsection{Fixed-Size Buckets Tests}\label{sec:Fixed-Size buckets-tests}
 This approach groups the nodes in \emph{buckets} of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of a factor of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the ones of their parent node.
 
@@ -644,7 +644,7 @@ This approach groups the nodes in \emph{buckets} of size two, meaning that the n
 \subsubsection{Performance}
 As expected, the time required to perform the repartitions is greatly reduced compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes we have that 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the main reason to use this approach appears when the time of repartition is of much greater importance compared to its precision.
 
-\newpage
+\clearpage
 \subsection{Variable-Size Buckets Tests}\label{sec:Variable-Size-buckets-tests}
 This approach is slightly more refined compared to the Fixed-Size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the Fixed-Size, we would expect the timings to be worse than the previous approach but still better than the All-Combinations one. We would also expect to see better partitions assignments.
 
@@ -660,7 +660,7 @@ For this method we also have to define a threshold value that is used to decide 
 \subsubsection{Performance}
 Based on the results, this approach does not perform as well as expected: the performance is slightly better than the All-Combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the Fixed-Size approach rather than the Variable-Size one, but that is just a conjecture.
 
-\newpage
+\clearpage
 \subsection{Hot Groups Tests}\label{sec:hot-groups-tests}
 The Hot Groups approach aims at discarding combinations of groups, rather than nodes like the previous methods. This means that we expect to see an increasing gain in performance once we increase the number of groups, rather than the number of items.
 
@@ -687,7 +687,7 @@ In this case the results of the tests are as expected. When compared to the All-
 
 Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is halved compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
 
-\newpage
+\clearpage
 \subsection{LRU Caching Tests}\label{sec:lru-caching-tests}
 As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the All-Combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
 
@@ -707,7 +707,7 @@ The results seem really good: in 100 repartitions the computation time decreased
 
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
-\newpage
+\clearpage
 \subsection{LRU with Hot Groups}\label{sec:lru-hot-groups}
 We will now test the performance of the LRU combined with the Hot Groups approach; the idea is that the Hot Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the Hot Groups. 
 
@@ -721,7 +721,7 @@ We will now test the performance of the LRU combined with the Hot Groups approac
 \subsubsection{Performance}
 The results are in line with our expectations; the timing are consistently lower than the previous LRU test, both at the beginning and at the end. The percentage decrease in computation time is similar to the percentage decrease we saw without the LRU.
 
-\newpage
+\clearpage
 \section{Repartition Results Evaluation}\label{sec:repartition-results-evaluation}
 Based on the results, we can draw some conclusions on the quality of the various methods compared against each others. 
 
@@ -738,7 +738,7 @@ By comparison, the one without Hot Groups reached a plateau at 400 repartitions,
 
 In conclusion, it looks like the way to go is definitely by exploiting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
 
-\newpage
+\clearpage
 \section{GeoPaxos Tests}\label{sec:geopaxos-tests}
 Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations.
 \subsection{Tests Setup}\label{sec:tests-setup}
@@ -753,7 +753,7 @@ The tests have a range of variables to be set, including:
   \item \textbf{Maximum throughput (msgs/s)} The maximum number of messages that a client can send in a second.
   \item \textbf{Range of operations} The interval of keys that the client is going to perform operations on. This usually corresponds to the total number of items, but the beginning and end of the range will be shifted depending on the region of the client.
   \item \textbf{Ratio of operations} The ratio of read and write operations performed by the client.
-  \item \textbf{Skew alpha} The skew of the zipf function that defines the frequency of operations on the range of keys (see Figure ~\ref{fig:skews}).
+  \item \textbf{Skew alpha} The skew of the zipf[link] function that defines the frequency of operations on the range of keys (see Figure ~\ref{fig:skews}).
 \end{itemize}
 
 All the clients behave in the same way. Once started, they send messages to the replica that they are connected to (at a rate depending on the variables defined above), and waits for the replies. There are some possible behaviors of clients that may not seem important at first, but that are quite important to keep under control to avoid unexpected or unwanted results from the tests.
@@ -792,69 +792,200 @@ The particular setups that we will test are four types of client behaviors, that
 
 [put image similar to GeoPaxos that shows replicas and latencies]
 
-\newpage
+\clearpage
 \subsection{local-skewed}\label{sec:local-skewed}
 In a geographically distributed environment, one of the possible types of workloads that we expect to see is a workload that depends on the geographic location of the clients themselves. For example, we expect that the users from Europe will access data object related to news about Europe rather than America or Asia. Another similar example can be seen in social networks, where geographically close people have a higher chance of being connected.
 
 Following this logic, the test we perform has three groups of clients in different regions that perform similar operations, but the distributions are shifted, so that they each focus on different key ranges. Figure ~\ref{fig:local-skewed-loads} shows a similar workload.
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
+  \caption[caption]{ local-skewed-loads }
+  \label{fig:local-skewed-loads}
+\end{figure}
+
 Because this situation is the ideal case for GeoPaxos, we expect the performance to grow quite steadily after a few repartitions. This is because the shifted loads allow to assign the different areas to the different groups quite easily, allowing us to perform all the single group operations with almost no latency involved in the communications.
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
-  \caption[caption]{ picture that shows client loads }
-  \label{fig:local-skewed-loads}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_tp.png}
+  \caption[caption]{ 50\% reads }
+  \label{fig:local50-performance}
 \end{figure}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{ picture that shows performance }
-  \label{fig:local-skewed-performance}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:local10-performance}
 \end{figure}
 
-\newpage
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:local5-performance}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:local1-performance}
+\end{figure}
+
+The plots regarding the tests with 90, 95 and 99 percent reads are pretty much as expected. The average throughput is slightly higher whenever we increase the amount of reads, since reads don't always require all the partitions to synchronize, allowing to perform multiple reads in parallel. The latencies follow a similar pattern, where the more reads we have, the lower the latencies are on average.
+
+The unexpected results are with the test with 50\% reads, which surprisingly has both high throughput and many messages with low latencies. Upon further inspections, we noticed that this was due to the repartitions assigning nodes to different groups. For the nodes handling keys that are evenly shared between groups (for example, in Figure \ref{fig:local_skewed_loads}, we see this around keys 0, 38, 62 and 100) the repartitioning algorithm assigns those nodes to only one group, while in the tests with higher reads percentages these nodes are assigned all the groups (1, 2, 3). From the point of view of the algorithm, this makes sense: since in the first test we have 50\% reads, it is better to assign the nodes to only one group, to favor the write operations. Instead, in the tests with many reads, having these nodes assigned to multiple groups increases the performance with reads. This is why in the first test we have so many messages with close to zero latency.
+
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{l l l l l l l l}
+    \hline
+    & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
+    \hline
+    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \hline
+  \end{tabular}
+  \caption{asd}\label{tab:local-latencies-table}
+\end{table}
+
+
 \subsection{global-skewed}\label{sec:global-skewed}
 Another possible view on client behavior in geographically distributed environments is the opposite of the previous one. Instead of having ``local loads'' that depend on the geographic locations of the clients, we could instead have one global load that is shared among all the clients. Examples of objects that could lead to this behavior are viral news that could interest the whole world, or famous people that have fans from all across the globe.
 
 For the test we have similar loads as before, but this time they are not shifted, meaning that all clients access the same keys with the same distribution. This can be seen in Figure \ref{fig:global-skewed-loads}.
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_global.png}
+  \caption[caption]{ global-skewed-loads }
+  \label{fig:global-skewed-loads}
+\end{figure}
+
 The results we expect to see is that the nodes will more or less have similar partitions, since the accesses that they receive from the clients are the similar.
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_global.png}
-  \caption[caption]{ picture that shows client loads }
-  \label{fig:global-skewed-loads}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_tp.png}
+  \caption[caption]{ 50\% global }
+  \label{fig:global50-performance}
 \end{figure}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{ picture that shows performance }
-  \label{fig:global-skewed-performance}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_tp.png}
+  \caption[caption]{ 90\% global }
+  \label{fig:global10-performance}
 \end{figure}
 
-\newpage
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
+  \caption[caption]{ 95\% global }
+  \label{fig:global5-performance}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
+  \caption[caption]{ 99\% global }
+  \label{fig:global1-performance}
+\end{figure}
+
+The results of the global tests are as expected. The throughput are higher in the tests with more read operations. we don't see any improvements in throughput during the tests, because the nodes are by default assigned to all groups, and the loads of the clients are almost identical, which means that there is no real way to improve the partitioning. The latencies are on average worse than the tests with local skews, again as expected, since in those tests we were able to perform a partitioning that takes advantage of the locality.
+
+Looking at the latencies there is an interesting stair-like shape, that gets less and less noticeable when increasing the reads. Those could be the plateaus given by the operations that require multiple groups to deliver the messages.
+
+
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{l l l l l l l l}
+    \hline
+    & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
+    \hline
+    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \hline
+  \end{tabular}
+  \caption{asd}\label{tab:local-latencies-table}
+\end{table}
+
 \subsection{constant}\label{sec:constant}
 A third possible load would be a test with a flat distribution, achievable with a skew of $alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distribute the objects. For this case we don't expect a good performance, as probably most nodes will be assigned to the same partitions.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_constant.png}
-  \caption[caption]{ picture that shows client loads }
-  \label{fig:constant-loads}
+  \caption[caption]{ constant-skewed-loads }
+  \label{fig:constant-skewed-loads}
 \end{figure}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/placeholder.png}
-  \caption[caption]{ picture that shows performance }
-  \label{fig:constant-performance}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:constant50-performance}
 \end{figure}
 
-\newpage
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:constant10-performance}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:constant5-performance}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_tp.png}
+  \caption[caption]{ picture that shows client loads }
+  \label{fig:constant1-performance}
+\end{figure}
+
+The results are similar to the global-skewed, since in this case the clients have similar behaviors as well. The observations made for the global tests apply for the constant tests as well. Interestingly, in the 50\% read test, the plateaus in the latencies are even more noticeable, perhaps because there's less variation in the combinations of groups destinations.
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{l l l l l l l l}
+    \hline
+    & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
+    \hline
+    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \hline
+  \end{tabular}
+  \caption{asd}\label{tab:local-latencies-table}
+\end{table}
+
 \subsection{variable}\label{sec:variable}
 This last test is slightly different, since this time we want to test if, and how quickly, the system adapts to a change in workloads. We will initially start with a local-skewed workload like in the first case, and after some time we will shift the clients once more, effectively changing the interest in the objects for all clients. What we expect to see is that after the workload change the performance will drop, and after some repartitions the system will slowly move onto the new partitioning that increases the performance with the new workload. The change in workload is shown in Figure \ref{fig:variable-loads}.
 
@@ -875,5 +1006,5 @@ The speed at which the system adapts to the new workload is highly dependant on 
   \label{fig:variable-performance}
 \end{figure}
 
-\newpage
+\clearpage
 \section{GeoPaxos Results Evaluation}\label{sec:geopaxos-results-evaluation}

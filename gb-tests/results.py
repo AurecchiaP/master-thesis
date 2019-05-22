@@ -36,8 +36,10 @@ if op == "tp":
     grouped = panel.sum(axis=0)
     if len(sys.argv) > 4:
         print(grouped['#ORDER'])
+        plt.xlabel('Time(s)')
+        plt.ylabel('Throughput(msgs/s)')
         plt.plot(grouped)
-        plt.legend()
+        # plt.legend()
         plt.tight_layout()
         plt.show()
 
@@ -100,6 +102,8 @@ elif op == "lat":
     if len(sys.argv) > 4:
         plt.plot(bin_edges[0:-1], cdf)
         plt.ylim((0, 1))
-        plt.legend()
+        # plt.legend()
+        plt.xlabel('Latency(s)')
+        plt.ylabel('Percentage')
         plt.tight_layout()
         plt.show()
