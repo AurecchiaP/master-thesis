@@ -20,6 +20,7 @@ if op != "lat" and op != "tp" and op != "skew":
     sys.exit(1)
 if op == "lat" or op == "tp":
     allfiles = glob.glob(os.path.join(srcdir, pattern))
+    allfiles2 = glob.glob(os.path.join(srcdir, pattern))
     df_list = {}
     for file in allfiles:
         #print "Processing ", file
@@ -32,18 +33,31 @@ if op == "lat" or op == "tp":
             df_list[file] = tmp['LATENCY']
 
 if op == "tp":
+    allfiles = glob.glob(os.path.join("variable_50/bin/old_stats", pattern))
+    df_list2 = {}
+    for file in allfiles:
+        #print "Processing ", file
+        # tmp = pd.read_table(file, engine='python', header='infer', skipfooter=10)
+        tmp = pd.read_csv(file, sep='\t', engine='python', header='infer', skipfooter=10)
+        tmp['sec'] = (tmp['ABS'] // 1000000) + 215
+        df_list2[file] = tmp.groupby('sec').count()
     panel = pd.Panel(df_list)
+    panel2 = pd.Panel(df_list2)
     grouped = panel.sum(axis=0)
+    grouped2 = panel2.sum(axis=0)
+    # grouped = grouped[5:len(grouped)]
+    grouped2 = grouped2[:len(grouped2)-5]
     if len(sys.argv) > 4:
         print(grouped['#ORDER'])
         plt.xlabel('Time(s)')
         plt.ylabel('Throughput(msgs/s)')
         plt.plot(grouped)
+        plt.plot(grouped2)
         # plt.legend()
         plt.tight_layout()
         plt.show()
 
-    discarded = grouped[5:len(grouped) - 5]  # sub the first and last 15 seconds
+    discarded = grouped[5:len(grouped)-5]  # sub the first and last 15 seconds
     a = discarded['#ORDER']
     (min, max) = st.t.interval(0.95, len(a) - 1, loc=np.mean(a), scale=st.sem(a))
     print ('#', srcdir, np.mean(a), min, max)
