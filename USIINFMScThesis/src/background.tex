@@ -36,10 +36,35 @@ For this reason, GeoPaxos decouples the roles of acceptors and learners, which i
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_bad.png}
-  \caption{ A visualization of why coupling acceptors and learners is bad for performance. Placing the shared replica close to the clients forces the acceptors to be far apart, putting the acceptors close together makes the learners distant from the clients. Decoupling the two entities allows to have a learner and a quorum of acceptors in each region, allowing single-group operations to be performed efficiently. }
-  \label{fig:decoupling-bad}
+  \begin{subfigure}[b]{0.70\textwidth}
+      \centering
+          \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_bad.png}
+      \caption{Coupled}
+      \label{fig:decoupling_bad}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.22\textwidth}
+      \centering
+      \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_good.png}
+      \caption{Decoupled}
+      \label{fig:decoupling_good}
+  \end{subfigure}
+     \caption{A visualization of why coupling acceptors and learners is bad for performance. Placing the shared replica close to the clients forces the acceptors to be far apart, putting the acceptors close together makes the learners distant from the clients. Decoupling the two entities allows to have a learner and a quorum of acceptors in each region, allowing single-group operations to be performed efficiently.}
+     \label{fig:decoupling}
 \end{figure}
+
+
+% \begin{figure}
+%   \centering
+%   \begin{subfigure}[htb]
+%     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_bad.png}
+%   \end{subfigure}
+  % \begin{subfigure}[htb]
+  %   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_good.png}
+  % \end{subfigure}
+%   \caption{ A visualization of why coupling acceptors and learners is bad for performance. Placing the shared replica close to the clients forces the acceptors to be far apart, putting the acceptors close together makes the learners distant from the clients. Decoupling the two entities allows to have a learner and a quorum of acceptors in each region, allowing single-group operations to be performed efficiently. }
+%   \label{fig:decoupling-bad}
+% \end{figure}
 
 % \begin{figure}[htb]
 %   \centering
