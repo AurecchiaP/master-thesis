@@ -1,5 +1,5 @@
 \chapter{GeoPaxos with B+ Tree}\label{sec:geopaxos-with-b+tree}
-Now that we have discussed the needed background, we can move onto the next step: using a B+ Tree on top of GeoPaxos to store the data objects. A b+tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentical in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and cause further modifications up to the root.
+Now that we have discussed the needed background, we can move onto the next step: using a B+ Tree on top of GeoPaxos to store the data objects. A B+ Tree has many interesting characteristics that make it particularly suitable for some types of applications, but it also brings some new challenges to the table. The data structure has to be indentical in every replica: this means that all the operations done on the tree have to be deterministic and executed in the right order. While this is not particularly complicated on other data structures, such as a HashMap, this becomes more complicated with a tree, where we have many branches and nodes that may split and cause further modifications up to the root.
 
 Furthermore, the usage of GeoPaxos and a tree brings the need for a new type of operation. In GeoPaxos the objects are assigned to one or more groups, or partitions, depending on the type, number and origin of accesses. Of these groups, one will also be chosen in each replica to be the preferred partition for the operation, usually based on geographic location. There has to be a moment when these groups are decided and calculated for each object in the B+ Tree. For this, we have a command called repartition. The command takes the workload of an object, which is the number of reads and writes from each group on this object, and a graph that represents the geographic location of the various replicas. It then calculates the optimal placement of the object in the groups, that with the given workload would give us the minimum average latency.
 
@@ -590,8 +590,9 @@ A possible flaw of this approach is that if one of our optimizations makes use o
 
 Lastly, another alternative solution to manage the bad performance of a cold LRU is to pre-load the LRU. As long as the system remains the same, we know that the cached values will still be valid. Therefore we can either store the LRU data from a previous execution, so that we can reload it before the next one, or we can pre-compute some entries of the LRU before any execution, for example entries that we expect to be likely found in our application. This would greatly reduce the drawbacks of a slow start.
 
+% \clearpage
 \section{Optimization Tests}\label{sec:optimization-tests}
-In this section we will test and compare all the different approaches to perform the repartition that were presented in the previous section. 
+In this section we will test and compare all the different approaches to perform the repartition that were presented in the previous section.
 
 In particular, we will be focusing on the time it takes to complete the repartition and on the difference of the actual assignment of partitions of the different nodes of the tree.
 
@@ -609,7 +610,7 @@ For the last two test cases, the ones regarding the LRU caching, we perform the 
 %   \label{fig:all}
 % \end{figure}
 
-\clearpage
+% \clearpage
 \subsection{All-Combinations}\label{sec:All-Combinations}
 This scenario will be used as a benchmark against which we will compare all the other algorithms to. Since in this case we are considering all the possible combinations of node assignments, this algorithm will give us the best possible partitioning given a workload. At the same time it will also be the slowest one, which makes it not ideal considering that we would like to perform repartitions quite frequently, to make sure that the current partitioning matches the load of the system.
 
@@ -623,7 +624,7 @@ This scenario will be used as a benchmark against which we will compare all the 
 \subsubsection{Performance}
 As we can see in figure~\ref{fig:all}, the performance slows down linearly with the number of objects in the tree, and exponentially in the number of groups, as expected. The time required to perform a total repartition becomes quickly too big, even with a relatively small tree.
 
-\clearpage
+% \clearpage
 \subsection{Fixed-Size Buckets Tests}\label{sec:Fixed-Size buckets-tests}
 This approach groups the nodes in \emph{buckets} of size two, meaning that the nodes of even levels of the tree will inherit the partitions of their parent node. This reduces the number of calculations of a factor of approximately $b$, the branching factor. Therefore, we expect the repartitions to take much less time compared to the previous approach. At the same time, we know that the partitions will be approximated greatly, since we will have all the leaf nodes, the ones containing the objects, approximating their partitions to the ones of their parent node.
 
@@ -644,7 +645,7 @@ This approach groups the nodes in \emph{buckets} of size two, meaning that the n
 \subsubsection{Performance}
 As expected, the time required to perform the repartitions is greatly reduced compared to the previous case. When looking at the partitions of the objects, though, we see a noticeable difference in the assigned partitions. This becomes particularly apparent when we have many groups and many different loads. In the case with 8 groups and 100'000 items, out of 2039 nodes we have that 780 of those had different partitions assigned to them, which is more than one third wrongly approximated nodes. Given these results, the main reason to use this approach appears when the time of repartition is of much greater importance compared to its precision.
 
-\clearpage
+% \clearpage
 \subsection{Variable-Size Buckets Tests}\label{sec:Variable-Size-buckets-tests}
 This approach is slightly more refined compared to the Fixed-Size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the Fixed-Size, we would expect the timings to be worse than the previous approach but still better than the All-Combinations one. We would also expect to see better partitions assignments.
 
@@ -660,7 +661,7 @@ For this method we also have to define a threshold value that is used to decide 
 \subsubsection{Performance}
 Based on the results, this approach does not perform as well as expected: the performance is slightly better than the All-Combinations approach, but not by far, and it is much slower than the fixed-bucket approach. Also, when comparing the number of different partition assignments, we get similar results as the fixed approach, with around one third of different assignments. While this does not necessarily mean that the impact of the different assignments is the same, it does not look great. We also assume that this synthetic test might favor the Fixed-Size approach rather than the Variable-Size one, but that is just a conjecture.
 
-\clearpage
+% \clearpage
 \subsection{Hot Groups Tests}\label{sec:hot-groups-tests}
 The Hot Groups approach aims at discarding combinations of groups, rather than nodes like the previous methods. This means that we expect to see an increasing gain in performance once we increase the number of groups, rather than the number of items.
 
@@ -687,7 +688,7 @@ In this case the results of the tests are as expected. When compared to the All-
 
 Regarding the precision of the repartition, we see a difference of 380 out of 2039 nodes in the test with 100'000 items and 8 groups. The number of diffences is halved compared to the approach with buckets, which is a fair improvement. We also believe that with better, more refined choices of thresholds the number of discrepancies could be further decreased.
 
-\clearpage
+% \clearpage
 \subsection{LRU Caching Tests}\label{sec:lru-caching-tests}
 As we said before, the Least Recently Used approach can be used on top of all the previous methods. For these tests, we will use it with the All-Combinations approach, to see how much we can improve upon the algorithm that gives us the optimal repartitioning. Again, since the LRU performs well once the cache is filled, this test will be performed with a series of 100 repartitions, calculating the time for each of them.
 
@@ -707,7 +708,7 @@ The results seem really good: in 100 repartitions the computation time decreased
 
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
-\clearpage
+% \clearpage
 \subsection{LRU with Hot Groups}\label{sec:lru-hot-groups}
 We will now test the performance of the LRU combined with the Hot Groups approach; the idea is that the Hot Groups will make up for the slow initial repartitions when the LRU cache is empty. Once the cache is filling up the performance should increase rapidly, giving us good approximations of the repartitions thanks to the Hot Groups. 
 
@@ -721,7 +722,7 @@ We will now test the performance of the LRU combined with the Hot Groups approac
 \subsubsection{Performance}
 The results are in line with our expectations; the timing are consistently lower than the previous LRU test, both at the beginning and at the end. The percentage decrease in computation time is similar to the percentage decrease we saw without the LRU.
 
-\clearpage
+% \clearpage
 \section{Repartition Results Evaluation}\label{sec:repartition-results-evaluation}
 Based on the results, we can draw some conclusions on the quality of the various methods compared against each others. 
 
@@ -738,7 +739,7 @@ By comparison, the one without Hot Groups reached a plateau at 400 repartitions,
 
 In conclusion, it looks like the way to go is definitely by exploiting the LRU caching, and pairing it with a different computational method depending on how time and precision are important for our system.
 
-\clearpage
+% \clearpage
 \section{GeoPaxos Tests}\label{sec:geopaxos-tests}
 Now that we have asserted the performance of the various approaches, we will run a more in-depth suite of tests with various types of settings, to simulate how the B+ Tree on top of GeoPaxos behaves in different situations.
 \subsection{Tests Setup}\label{sec:tests-setup}
@@ -791,12 +792,12 @@ The particular setups that we will test are four types of client behaviors, that
     \textbf{JP} & 215 & 145 & 1 \\
     \hline
   \end{tabular}
-  \caption{The latencies used in our local cluster of machines used to simulate geographically distant datacenters, placed in Ireland(EU), California(CA) and Tokyo(JP).}\label{tab:latencies}
+  \caption{The latencies, in milliseconds, used in our local cluster of machines used to simulate geographically distant datacenters, placed in Ireland(EU), California(CA) and Tokyo(JP).}\label{tab:latencies}
 \end{table}
 
 [put image similar to GeoPaxos that shows replicas and latencies]
 
-\clearpage
+% \clearpage
 \subsection{local-skewed}\label{sec:local-skewed}
 In a geographically distributed environment, one of the possible types of workloads that we expect to see is a workload that depends on the geographic location of the clients themselves. For example, we expect that the users from Europe will access data object related to news about Europe rather than America or Asia. Another similar example can be seen in social networks, where geographically close people have a higher chance of being connected.
 
@@ -854,13 +855,13 @@ The unexpected results are with the test with 50\% reads, which surprisingly has
     \hline
     & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
     \hline
-    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{50\% reads} & 82.75 & 0.866 & 1.074 & 1.964 & 4.632 & 436.6 & 876.2 \\
+    \textbf{90\% reads} & 116.0 & 0.910 & 1.519 & 2.803 & 229.4 & 417.7 & 792.1 \\
+    \textbf{95\% reads} & 96.98 & 0.983 & 1.832 & 2.829 & 186.8 & 404.9 & 782.8 \\
+    \textbf{99\% reads} & 79.97 & 1.049 & 2.121 & 3.065 & 109.2 & 396.7 &  733.6 \\
     \hline
   \end{tabular}
-  \caption{asd}\label{tab:local-latencies-table}
+  \caption{The mean and various percentiles of the measured latencies in the local-skewed tests}\label{tab:local-latencies-table}
 \end{table}
 
 
@@ -922,13 +923,13 @@ Looking at the latencies there is an interesting stair-like shape, that gets les
     \hline
     & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
     \hline
-    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{50\% reads} & 147.6 & 0.982 & 1.219 & 1.677 & 297.0 & 481.3 & 758.4 \\
+    \textbf{90\% reads} & 151.4 & 1.045 & 1.990 & 43.58 & 243.3 & 527.7 & 768.5 \\
+    \textbf{95\% reads} & 116.0 & 1.061 & 2.070 & 4.623 & 222.4 & 474.4 & 778.3 \\
+    \textbf{99\% reads} & 68.02 & 1.340 & 2.316 & 3.087 & 4.990 & 366.3 & 698.4 \\
     \hline
   \end{tabular}
-  \caption{asd}\label{tab:global-latencies-table}
+  \caption{The mean and various percentiles of the measured latencies in the local-skewed tests}\label{tab:global-latencies-table}
 \end{table}
 
 \subsection{constant}\label{sec:constant}
@@ -981,13 +982,13 @@ The results are similar to the global-skewed, since in this case the clients hav
     \hline
     & \textbf{Mean} & \textbf{5\%} & \textbf{25\%} & \textbf{50\%} & \textbf{75\%} & \textbf{95\%}& \textbf{99\%} \\
     \hline
-    \textbf{50\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{90\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{95\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
-    \textbf{99\% reads} & 150 & 37 & 540 & 540 & 540 & 540 & 540 \\
+    \textbf{50\% reads} & 99.26 & 0.874 & 1.140 & 1.820 & 222.8 & 342.2 & 948.1 \\
+    \textbf{90\% reads} & 192.2 & 0.950 & 1.610 & 182.0 & 263.9 & 723.8 & 888.8 \\
+    \textbf{95\% reads} & 132.5 & 1.006 & 1.543 & 3.196 & 238.5 & 479.0 & 833.4 \\
+    \textbf{99\% reads} & 104.1 & 1.074 & 2.007 & 3.208 & 212.4 & 412.8 & 778.4 \\
     \hline
   \end{tabular}
-  \caption{asd}\label{tab:constant-latencies-table}
+  \caption{The mean and various percentiles of the measured latencies in the constant tests}\label{tab:constant-latencies-table}
 \end{table}
 
 \subsection{variable}\label{sec:variable}
@@ -1015,7 +1016,7 @@ Note that we performed this test only with the 50\% reads load, since what we wa
 
 The result is quite nice. The latency is nothing particularly different compared to the previous cases, as it shows a similar shape. The throughput instead is a positive result: in the right image of Figure \ref{fig:variable50-performance} we can see the green line that represents the performance with the initial clients, and the red line which represents the performance after we changed the client behavior. The green line behaves as usual, with noticeable increments in performance at the 90 and 120 seconds mark, which correspond to two repartitions. Once we change the clients, the performance drops, since the partitioning is not optimal for the new clients. After the second repartition with the new clients, at 280 seconds, we see that the performance goes back up, meaning that the system adapted to the new clients, and that the repartition correctly re-assigned the nodes based on the recent operations of the new clients.
 
-\clearpage
+% \clearpage
 \section{GeoPaxos Results Evaluation}\label{sec:geopaxos-results-evaluation}
 Let us now analyze the results of the tests of the B+ Tree with GeoPaxos, and see if there are some interesting patterns or behaviors that are noteworthy.
 
@@ -1040,4 +1041,3 @@ In conclusion, the tests showed positive behaviors, with no particularly surpris
 % Regarding the graphs of the latencies, we have plateaus which are particularly noticeable in the tests with few read operations. These can almost certainly explained by the importance of multi-group operations. In the tests with 50\% writes, we have many occurrences where a message has to be ordered by a set of groups, which on average will have a latency cost that is highly dependant on the geographic location of the groups, and therefore the messages ordered by the same set of groups will have very similar latencies. Therefore, we will have that these operations are grouped together, ending up with the stair-like shape of the latency graphs. 
 
 % constant before a repartition is faster than local, because the loads are evenly distributed, less change to conflict keys
-

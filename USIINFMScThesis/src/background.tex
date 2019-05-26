@@ -22,18 +22,31 @@ We can also see how GeoPaxos allows a certain amount of redundancy both of repli
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/datacenters.png}
 
-  \caption[The architecture of the system]{Coelho \texttrademark}
+  \caption{put the explanation of what happens in the pic here put the explanation of what happens in the pic here put the explanation of what happens in the pic here} 
   \label{fig:datacenters}
 \end{figure}
 
 Furthermore, GeoPaxos makes use of three important features that distinguish it from alternative solutions: these features are \emph{decoupling order from execution}, \emph{partial ordering of operations} and \emph{exploiting geographic locality}. 
 
+% \clearpage
 \subsection{Decoupling Order from Execution}
 The Paxos protocol introduces a set of roles, namely acceptors, learners, proposers (and an eventual leader). When working with a distributed environment, deciding where to place each of these roles is important: in particular, placing acceptors and learners in the same replica, as it is often done for with Paxos[cite?] turns out not to be efficient. This is because we would want replicas to be close to the clients to decrease latency, but then the replicas would be far away from each others, increasing the latency required to perform the ordering of messages.
 
 For this reason, GeoPaxos decouples the roles of acceptors and learners, which introduces a higher flexibility for the placement of the roles, allowing us to keep acceptor entities close to each other for the ordering communications and the learners close to the clients, so that their requests will be dispatched faster.
 
-[possibly a picture? might be clear enough without it]
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_bad.png}
+  \caption{ A visualization of why coupling acceptors and learners is bad for performance. Placing the shared replica close to the clients forces the acceptors to be far apart, putting the acceptors close together makes the learners distant from the clients. Decoupling the two entities allows to have a learner and a quorum of acceptors in each region, allowing single-group operations to be performed efficiently. }
+  \label{fig:decoupling-bad}
+\end{figure}
+
+% \begin{figure}[htb]
+%   \centering
+%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/decoupling_good.png}
+%   \caption{ explanation }
+%   \label{fig:decoupling-good}
+% \end{figure}
 
 \subsection{Partial Ordering of Operations}
 The Paxos protocol allows us to impose a total order on all the messages ordered in the system. The issue is that this total ordering requires all the groups to communicate, slowing down the performance of the system. GeoPaxos handles this by only enforcing a partial order on the message.
@@ -43,7 +56,7 @@ A simple example of this can be seen where, for example, we have a sequence of v
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partial-ordering.png}
 
-  \caption[The architecture of the system]{ Coelho \texttrademark }
+  \caption{ (a) shows two commutative operations. The operations are on two objects, $x$ and $y$, that do not conflict with each other, therefore the order of execution is not important. (b) instead we have conflicting operations that have to be ordered }
   \label{fig:partial-ordering}
 \end{figure}
 

@@ -1,4 +1,25 @@
 \chapter{Conclusion}\label{sec:Conclusion}
+Let us now summarize what we have presented in this report and then draw some final conclusions.
 
+We started by introducing the importance of Distributed Data Structures in today's age, and in particular the benefits of using distributed trees such as B+ Trees. 
+
+We then moved onto the core focus of this report, which is the efficient repartition of distributed B+ Tree data structures. We discussed what the challenges are, and how we planned to approach them.
+
+Finally we presented our different repartition algorithms, discussing the assumptions, limitations, and expectations we had of them. The next step was actually testing these repartition approaches. The tests were split into two big groups; the first group was aimed at testing only the repartition algorithms, so that we were able to assess the quality and efficiency of each method without the influence of other noise factors. The second group of tests was instead done with the distributed B+ Trees on top of GeoPaxos, to see how the repartition algorithms would have behaved in a more practical environment.
+
+The results of the first tests were quite interesting, with some methods performing better than expected, and others falling short even though they looked good on paper. In general, though, all methods were able to bring some interesting improvements. The technique that was most impressive was the caching of the optimal partitions based on the given workloads of a node; this approach was able to improve the repartition times by up to a factor of 100 compared to the same algorithm without any caching mechanism. 
+
+The tests with GeoPaxos were in line with our expectations, without any particularly big surprise. The chosen repartition algorithm (Hot Groups with LRU caching) was fast enough not to block the execution of the system for noticeable amount of time, and the repartition results were able to improve the performance of GeoPaxos communications in the tests with advantageous clients behaviors.
+
+In conclusion, there are definitely various viable alternatives to approach the repartition problem of distributed trees. The most valuable one we found was to cache repartition results, with the heuristic that the geographic placement of replicas of a system will not change often. This approach bring virtually no drawbacks to the repartition quality, but it can drastically improve the efficiency of the repartition process.
 
 \section{Future work}\label{sec:future-work}
+Regarding what could be done in the future, there are various aspects that could be improved. 
+
+One direction that could be interesting to follow is about implementing a more dynamic approach to the repartition algorithm. As we discussed in this report, we were using one optimization approach at a time, and the results showed that most of them had pros and cons associated to them. Therefore a possible next step would be to make a system that has multiple methods available, and chooses which one to use depending on the state of the system. A simple example would be the case where the LRU cache is empty, in which case a fast method could be chosen, until the cache is filled up, and at that point it could be convenient to use the method that gives better quality of partitions.
+
+Another possibility would be to attempt other completely different optimization approaches. In this report we presented a handful of ways to approximate and hence speed up the repartitions, usually based on some assumptions and heuristics. It is definitely possible to come up with alternative solutions, maybe based on different assumptions on the system.
+
+Improving on the methods presented in this report is definitely another possible track as well. This could be done in the way of actually changing and improving the concepts of the methods, or in further researching the optimal parameters that are necessary for the usage of some methods.
+
+

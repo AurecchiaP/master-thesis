@@ -27,6 +27,7 @@ if op == "lat" or op == "tp":
         # tmp = pd.read_table(file, engine='python', header='infer', skipfooter=10)
         tmp = pd.read_csv(file, sep='\t', engine='python', header='infer', skipfooter=10)
         tmp['sec'] = tmp['ABS'] // 1000000
+        tmp['LATENCY'] = tmp['LATENCY'] / 1000
         if op == "tp":
             df_list[file] = tmp.groupby('sec').count()
         elif op == "lat":
@@ -93,6 +94,7 @@ elif op == "lat":
 
     # Choose how many bins you want here
     data_set = sorted(set(lat))
+    
     num_bins = np.append(data_set, data_set[-1] + 1)
 
     # Use the histogram function to bin the data
@@ -117,7 +119,7 @@ elif op == "lat":
         plt.plot(bin_edges[0:-1], cdf)
         plt.ylim((0, 1))
         # plt.legend()
-        plt.xlabel('Latency(s)')
+        plt.xlabel('Latency(ms)')
         plt.ylabel('Percentage')
         plt.tight_layout()
         plt.show()
