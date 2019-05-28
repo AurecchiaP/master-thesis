@@ -7,6 +7,9 @@ import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({'font.size': 12})
+
+
 plt.style.use('bmh')
 
 if len(sys.argv) < 4:
@@ -36,26 +39,24 @@ if op == "lat" or op == "tp":
             df_list[file] = tmp['LATENCY']
 
 if op == "tp":
-    allfiles = glob.glob(os.path.join("variable_50/bin/old_stats", pattern))
-    df_list2 = {}
-    for file in allfiles:
-        #print "Processing ", file
-        # tmp = pd.read_table(file, engine='python', header='infer', skipfooter=10)
-        tmp = pd.read_csv(file, sep='\t', engine='python', header='infer', skipfooter=10)
-        tmp['sec'] = (tmp['ABS'] // 1000000) + 215
-        df_list2[file] = tmp.groupby('sec').count()
+    # allfiles = glob.glob(os.path.join("variable_50/bin/old_stats", pattern))
+    # df_list2 = {}
+    # for file in allfiles:
+    #     tmp = pd.read_csv(file, sep='\t', engine='python', header='infer', skipfooter=10)
+    #     tmp['sec'] = (tmp['ABS'] // 1000000) + 215
+    #     df_list2[file] = tmp.groupby('sec').count()
     panel = pd.Panel(df_list)
-    panel2 = pd.Panel(df_list2)
+    # panel2 = pd.Panel(df_list2)
     grouped = panel.sum(axis=0)
-    grouped2 = panel2.sum(axis=0)
+    # grouped2 = panel2.sum(axis=0)
     # grouped = grouped[5:len(grouped)]
-    grouped2 = grouped2[:len(grouped2)-5]
+    # grouped2 = grouped2[:len(grouped2)-5]
     if len(sys.argv) > 4:
         print(grouped['#ORDER'])
         plt.xlabel('Time(s)')
         plt.ylabel('Throughput(msgs/s)')
         plt.plot(grouped)
-        plt.plot(grouped2)
+        # plt.plot(grouped2)
         # plt.legend()
         plt.tight_layout()
         plt.show()
@@ -66,29 +67,35 @@ if op == "tp":
     print ('#', srcdir, np.mean(a), min, max)
 
 elif op == "skew":
-    lines1 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_100000.txt")]
-    lines2 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_500000.txt")]
-    lines3 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_1000000.txt")]
-    # lines1 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_all_assigns.txt")]
-    # lines2 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_hotgroups01_assigns.txt")]
-    # for i in range():
+    # lines1 = [int(line.rstrip('\n'))/1000 for line in open("./local_50")]
+    # lines2 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_8_500000.txt")]
+    # lines3 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_8_1000000.txt")]
+    # lines1 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
+    # lines2 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha05.txt")]
+    # lines3 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
+    # lines4 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha1smooth.txt")]
+    # lines1 = [int(line.rstrip('\n')) for line in open
+    #     ("skew/skew-alpha0.txt")]
+    # for i in range(0):
     #     lines1.insert(0, lines1.pop(-1))
-    # lines2 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha1smooth.txt")]
-    # for i in range(25):
+    # lines2 = [int(line.rstrip('\n')) for line in open
+    #     ("skew/skew-alpha0.txt")]
+    # for i in range(1):
     #     lines2.insert(0, lines2.pop(-1))
     # lines3 = [int(line.rstrip('\n')) for line in open
-    #     ("skew/skew-alpha1smooth.txt")]
-    # for i in range(75):
+    #     ("skew/skew-alpha0.txt")]
+    # for i in range(98):
     #     lines3.insert(0, lines3.pop(-1))
-    plt.xlabel('Iteration')
-    plt.ylabel('Time(s)')
-    plt.plot(lines1, label='100\'000 items')
-    plt.plot(lines2, label='500\'000 items')
-    plt.plot(lines3, label='1\'000\'000 items')
+    plt.xlabel('Key')
+    plt.ylabel('Frequency')
+    plt.plot(lines1, label='Group 1')
+    plt.plot(lines2, label='Group 2')
+    plt.plot(lines3, label='Group 3')
+    # plt.plot(lines4)
     # plt.plot(lines)
     axes = plt.gca()
     # axes.set_xlim([xmin,xmax])
-    # axes.set_ylim([0,10000])
+    axes.set_ylim([0,5000])
     plt.legend()
     plt.tight_layout()
     plt.show()

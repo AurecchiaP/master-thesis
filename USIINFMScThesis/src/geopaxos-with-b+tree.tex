@@ -480,18 +480,21 @@ Table \ref{tab:hot-groups-example} is a possible workload of a node in a case wi
 \section{LRU caching}\label{sec:lru-caching}
 This method, which we call Least Recently Used Caching, is about storing the partitions assignments using the workloads as keys. The nice thing of this approach is that it's an extra feature that can be used with any of the previously presented approaches.
 
-The idea of storing the results makes use of two important aspects that can be observed in our applications, which allow us to use a different type of approach to improve the performance of the repartition. The first one is given that two identical workloads, the partitions assignment will be the same, which means that we can in theory cache the assignments. The second one is that of all the possible combinations of workloads, many of them are very unlikely to be met during execution.
+The idea of storing the results makes use of two important aspects that can be observed in our system. The first one is that, given two identical workloads, the partitions assignment will be the same, which means that we can in theory cache some of the results of the repartitions. The second one is that of all the possible combinations of workloads, many of them are very unlikely to be met during execution.
 
 We will now discuss both of these ideas and the consequences that they have for our caching approach.
 
 \subsection{Reusability of computations}\label{sec:Reusability-of-computations}
-The results of the repartition algorithm on a node depends on two things: the geographic structure of the system and the workload of the node. The geographic structure, which is defined by the number and location of replicas, does not change during the execution of our system. Logically then, the partition assignment of two nodes will always be the same whenever the workloads of the nodes are the same.
+The results of the repartition on a node depends on two things: the geographic structure of the system and the workload of the node. The geographic structure, which is defined by the number and location of replicas, does not change during the execution of our system. Logically then, the partition assignment of two nodes will always be the same whenever the workloads of the nodes are the same.
 
-This means that we may end up doing the same calculations multiple times, getting the same results each time. For example, if we have two nodes with the same workload (which means that their RW counters are the same) then the two objects will be assigned to the same groups. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the result. 
+This means that we may end up doing the same calculations multiple times, getting the same results each time. For example, if we have two nodes with the same workload (which means that their RW counters are the same) then the two objects will be assigned to the same groups. Therefore, we should instead store the results, so that the second time we face the same workload we can just load the previously cached result. 
 \\\\
 Since we want to be able to load the results quickly, the first data structure that comes to mind would be some kind of map, so that we can retrieve the results in $\approx O(1)$ time. This introduces two more subtleties.
 
-The first one is how to define keys for the values in the map. We know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the RW counters are unbounded. Furthermore, since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each other would give us the same assignment of partition, which means that we would have multiple keys for the same values for no reason. Table \ref{tab:lru-multiple-workload} shows two workloads that are multiples of each others, where even though the workloads are different, the result of the repartition of those nodes would be the same.
+The first one is how to define keys for the values in the map. We know that simply using the workload as the key would be enough, but we could ideally have an infinite number of different loads, since the RW counters are unbounded.
+
+The second issue is that, since we can have a varying amount of groups, the amount of combinations would grow even larger. Also, workloads that are multiples of each other would give us the same assignment of partition, which means that we would have multiple keys for the same values for no reason. Table \ref{tab:lru-multiple-workload} shows two workloads that are multiples of each others, where even though the workloads are different, the result of the repartition of those nodes would be the same.
+These two issues could lead us to have a data structure that grows to an unmanageable size.
 
 \begin{table}[!htb]
   \centering
@@ -515,15 +518,15 @@ The first one is how to define keys for the values in the map. We know that simp
   \caption{Example of two workloads that result in the same groups assignment}\label{tab:lru-multiple-workload}
 \end{table}
 
-These two issues could lead us to have a data structure that grows to an unmanageable size.
+To handle these two issues, we will now explain how we build a key starting from a node and its workload.
 \\\\
-What we can do instead is to encode the workload in a different type of key. For each group, we can calculate the \textbf{\emph{normalized workloads}} and the \textbf{\emph{update ratios}}. Intuitively, the normalized workload tells us about the proportion of operations received from the different groups, while the update ratio tells us about the proportion of read and write operations for each group.
+For each group, we can calculate the \textbf{\emph{normalized workloads}} and the \textbf{\emph{update ratios}}. Intuitively, the normalized workload tells us about the proportion of operations received from the different groups, while the update ratio tells us about the proportion of read and write operations for each group.
 
 The normalized workload is the amount of total operations for each group compared to the total number of operations for the whole node. The formula. This can be expressed as:
 \begin{equation} \label{eq:normalized_workload}
   normalized\ workload_i =  \cfrac{\sum operations\ from\ group_i}{\sum\ of\ all\ operations}
 \end{equation}
-
+\\\\
 For example, with the example workload of Table~\ref{tab:lru-workload-example} and Equation \ref{eq:normalized_workload}, we get normalized workloads approximated to two digits as: 
 \begin{align*}
   normalized\ workload_1 = \cfrac{\sum operations\ from\ group_1}{\sum\ of\ all\ operations} &=\\ \cfrac{150+32}{150+37+540+32+10+93} &= \cfrac{182}{862} \approx 0.21
@@ -534,16 +537,13 @@ For example, with the example workload of Table~\ref{tab:lru-workload-example} a
 \begin{equation*}
   normalized\ workload_3 = \cfrac{633}{862} \approx 0.73
 \end{equation*}
-
+\\\\
 Now that we have our normalized workloads, we can calculate the update ratio for each group. The update ratio ratio is defined as the ratio between writes and the total of all operations for each group:
-
 \begin{equation} \label{eq:update_ratio}
   update\ ratio_i =  \cfrac{\sum reads\ from\ group_i}{\sum operations\ from\ group_i}
 \end{equation}
-
-
+\\\\
 Again, with the workload of Table~\ref{tab:lru-workload-example} and Equation \ref{eq:update_ratio} we would get:
-
 \begin{align*}
   update\ ratio_1 =  \cfrac{\sum reads\ from\ group_1}{\sum operations\ from\ group_1} &=\\ \cfrac{32}{150+32} &= \cfrac{32}{182} \approx 0.18
 \end{align*}
@@ -554,7 +554,11 @@ Again, with the workload of Table~\ref{tab:lru-workload-example} and Equation \r
   update\ ratio_3 = \cfrac{93}{633} \approx 0.15
 \end{equation*}
 \\\\
-You may have noticed how we approximate all the values to two digits: there are two good reasons for doing this. The first one is to reduce the number of possible combinations of keys, which will be further discussed in Section \ref{sec:Workloads-combinations}. The second one is to increase the hit ratio of our cache. If we were to store our workloads with really high precision, it would also become very unlikely to find two matching workloads during execution. If instead we approximate the workloads, we would get indentical normalized workloads and update ratios for workloads that are similar but not identical. Table \ref{tab:lru-similar-workload} shows two workloads that are quite similar, and that thanks to our approximations they would map to the same key. This is good, because the slight differences are usually not enough to give us two different repartition results, which means that we do want similar workloads to share the same keys.
+You may have noticed how we approximate all the values to two digits: there are two good reasons for doing this.
+
+The first one is to reduce the number of possible combinations of keys, which will be further discussed in Section \ref{sec:Workloads-combinations}.
+
+The second one is to increase the hit ratio of our cache. If we were to store our workloads with really high precision, it would also become very unlikely to find two matching workloads during execution. If instead we approximate the workloads, we would get indentical normalized workloads and update ratios for workloads that are similar but not identical. Table \ref{tab:lru-similar-workload} shows two workloads that are quite similar, and that thanks to our approximations they would map to the same key. This is a good thing, because the slight differences are usually not enough to give us two different repartition results, which means that we do want similar workloads to share the same keys.
 
 \begin{table}[!htb]
   \centering
@@ -577,10 +581,9 @@ You may have noticed how we approximate all the values to two digits: there are 
   \end{tabular}
   \caption{Example of two similar workloads}\label{tab:lru-similar-workload}
 \end{table}
-
 Once we have all the normalized workloads and update ratios, we can use them to create the key. For each group, we can create the partial key by concatenating the normalized workload with the update ratio. Since we had previously approximate the values to two digits, it is easier to integers; we therefore transform them to centiles, which means that for example the value $0.21$ would become $21$. The formula for the partial key is then:
 $$K_i = normalized\ workload_i\ ||\ update\ ratio_i $$
-We then concatenate the partial keys to get the actual key for our workload:
+We finally concatenate the partial keys to get the actual key for our workload:
 $$ K = K_1\ ||\ K_2\ ||\ K_3 $$
 Going back to our example workload of Table \ref{tab:lru-workload-example}, we get the following partial and final keys:
 $$ K_1 = 2118\ \ \ \ \ \ \ \ K_2 = 0521\ \ \ \ \ \ \ \ K_3 =7315 $$
@@ -606,31 +609,36 @@ $$ K = 211805217315 $$
 
 
 \subsection{Workloads combinations}\label{sec:Workloads-combinations}
-Our workload to key encoding now gives us a fair improvement, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even particularly big. We therefore have to limit the number of keys. 
-
-The notion that can help us improve on what we have is that many of those keys will never be used. For example, the key with all 0s does not represent any workload that we could possibly have. Furthermore, even a key with a possible workload could be a very rare occurrence, and therefore we could just avoid to store it and instead do the recalculation the few times we do encounter such a workload. 
-
-We therefore came to the conclusion that a simple map, like the HashMap that we had initially thought of using to store the partition assignments, is clearly not enough by itself.
+Our workload-to-key encoding gives us keys that are not too big, allowing us to discard workloads that would be duplicates and also limit the number of possible entries by normalizing them to an interval. The issue of having too many keys is still present, though: let's say we have 5 groups and we use 0-99 values, we would have 0-9999 combinations for each group, therefore having $10^{20}$ keys, for an example that is not even particularly big. We therefore have to limit the number of keys. 
+\\\\
+The notion that can help us improve on what we have is that many of those $10^{20}$ keys will never be used. For example, the key with all 0s does not represent any workload that we could possibly have. Furthermore, even a key with a possible workload could be a very rare occurrence, and therefore we could just avoid to store it and instead do the recalculation the few times we do encounter such a workload. 
+\\\\
+We therefore came to the conclusion that a simple map, like the HashMap that we had initially thought of using to store the partition assignments, is not able to satisfy our needs.
 
 A possible way to circumvent this issue is by implementing something like a Least Recently Used (LRU) data structure: we can limit the maximum number of keys that we keep in our cache, and once we want to add a new key but the limit has been reached, we evict the least recently used key and we add the new one. We still do not want to degrade the performance of the data structure, though: we need to be able to retrieve and insert a key in (amortized) constant time.
-
 % Initially we were just using an unlimited size data structure, in particular a HashMap. While it was working quite well in improving the performance of the algorithm, we also had to consider the possible limitations of the system. We have a very big key space, which means that in case that the map gets completely filled up, it is going to require an enormous amount of space, which is unfeasible to handle. Therefore, we decided look for alternative data structures. We decided on using an LRU because it limited the maximum size of the cache, and because it was possible to build one that would still have constant (amortized) retrieval, addition and update of the keys, therefore not slowing down the performance that we had with the simple HashMap.
-
-The LRU is constructed by using two simpler data structures:
+\\\\
+The LRU can be constructed by using two simpler data structures:
 \begin{itemize}  
   \item A map, which allows for quick addition and retrieval of items. We already had this, so we mostly just have to modify it so that it can be used with the LRU.
   \item A list, which is used to know which items were used last. The most recently used items are put at the front of the list, and the ones at the tail are the next ones to be evicted from the LRU.
 \end{itemize}
-
 Note that we could have used other types of maps, for example a TreeMap, but in our tests we saw no clear-cut difference between the performance of the two, hence we decided to keep the HashMap that we were previously using.
+\\\\
+The map, instead of storing a a simple pair as before:
+\begin{center}
+  \texttt{<Key, Value>}
+\end{center}
+it now stores as value a pair of the actual value, and a reference to this item in the list:
+\begin{center}
+  \texttt{<Key, Pair<Value, List\_value>}
+\end{center}
+The items in the list, instead, contain the key of the object they refer to. A visualization of this structure can be seen in Figure \ref{fig:lru}.
 
-The map, instead of storing $<Key, Value>$ as before, now stores $<Key, Pair<Value, List\_value>>$. The items list contains the keys of the object they refer to. A visualization of this can be seen in Figure \ref{fig:lru}.
+Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list to the front, since it was the most recently used.
 
-Whenever we want to retrieve an item from the LRU, we look for it in the map; if we find it, we update its position in the list (which is referenced by the $List\_value$) to the front, since it was the most recently used.
-
-When we want to insert an item and the cache is full, we take the item at the tail of the list; this item contains the map key of the item it corresponds to, therefore to delete the item we just delete from the map the item that corresponds to the key, and then we pop the tail of the list. 
-The newly inserted item will then be added to the map, and the $List\_value$ will be added to the front of the list.
-
+When we want to insert an item and the cache is full, we take the item at the tail of the list. This item refers to the least recently used object, therefore to delete the item we just delete from the map the item that corresponds to the key, and then we pop the tail of the list. The newly inserted item will then be added to the map, and the \texttt{List\_value} will be added to the front of the list.
+\\\\
 Figure \ref{fig:lru} shows an LRU with maximum size of 8. The map contains 8 items, where the key identifies the object in the map and the value is a pair of the value itself and a pointer to an element in the list. The elements of the list contain themselves the key of the object they refer to. This structure allows to perform all the needed operations in constant time. 
 
 \begin{algorithm}
@@ -713,7 +721,7 @@ Figure \ref{fig:lru} shows an LRU with maximum size of 8. The map contains 8 ite
   \label{fig:lru}
 \end{figure}
 
-\subsection{LRU marmup}\label{sec:warmup}
+\subsection{LRU warmup}\label{sec:warmup}
 The main issue of using an LRU-style caching is that initially, the performance will be as bad as having no caching optimization at all. This is because until we actually have any previous calculation cached, we will still have to do all the calculations one by one. 
 
 One possible solution for this is to employ a combination of the optimization that were presented. Since some of these optimizations work on different parts of the repartition process, we can actually use them together to have even better performance gains. For example, we can use the hot groups optimization, discarding the combinations of groups that are highly unlikely to be any good, and once we have the result we cache it in the LRU data structure. The hot groups approach would improve the performance of the system while the LRU is cold, and even when the LRU is warmed up the hot groups optimization would still be useful when we have a cache miss.
@@ -728,9 +736,9 @@ In this section we will test and compare all the different approaches to perform
 
 In particular, we will be focusing on the time it takes to complete the repartition and on the difference of the actual assignment of partitions of the different nodes of the tree.
 
-For each case, we will use an initially empty B+tree of maximum slot-use, or branching factor, equal to 100. We then have variables $ITEMS$, with possible values $100'000$, $500'000$ and $1'000'000$, and $GROUPS$, with values $3, 4, 8$. The graph structure used for the groups is symmetrical, with a latency of 100ms between all pairs of groups.
+For each case, we will use an initially empty B+tree of maximum slot-use, or branching factor, equal to 100. We then have variables \texttt{ITEMS}, with possible values $100'000$, $500'000$ and $1'000'000$, and \texttt{GROUPS}, with values $3, 4, 8$. The graph structure used for the groups is symmetrical, with a latency of 100ms between all pairs of groups.
 
-We start each test by inserting in the B+tree a number of new values equal to $ITEMS$, distributed on an interval from 0 to $2\cdot ITEMS$. We then repartition, so that the RW counters get reset. This avoids that these inserts affect the RW counters of the repartition we actually want to test. After this first repartition, we perform, for each group, $2\cdot ITEMS$ operations, with a 50\% ratio of writes and reads. Finally we perform a second repartition, which will be timed to see how good the repartition algorithm is. Since we perform operations on the whole range of keys, it means that we will be repartitioning all the nodes at once, which is the quite rare worst-case performance.
+We start each test by inserting in the B+tree a number of new values equal to \texttt{ITEMS}, distributed on an interval from $0$ to \texttt{2 $\cdot$ ITEMS}. We then repartition, so that the RW counters get reset. This avoids that these inserts affect the RW counters of the repartition we actually want to test. After this first repartition, we perform, for each group, \texttt{2 $\cdot$ ITEMS} operations, with a 50\% ratio of writes and reads. Finally we perform a second repartition, which will be timed to see how good the repartition algorithm is. Since we perform operations on the whole range of keys, it means that we will be repartitioning all the nodes at once, which is the quite rare worst-case performance.
 
 For the last two test cases, the ones regarding the LRU caching, we perform the test differently, since it is a different type of performance optimization. We do the setup part of the test as before, but we repeat the part of performing operations and repartitioning one hundred times. This is because the LRU is an extra feature that can be paired with any of the previous algorithms, and its usefulness only shows once we have performed multiple repartitions.
 
@@ -799,7 +807,7 @@ To quantify the quality of this repartition, we calculate mean and standard devi
 
 % \clearpage
 \section{Variable-size buckets experiments}\label{sec:Variable-Size-buckets-tests}
-This approach is slightly more refined compared to the fixed-size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the fixed-size, we would expect the timings to be worse than the previous approach but still better than the all-combinations one. We would also expect to see better partitions assignments.
+This approach is slightly more refined compared to the fixed-size approach, therefore we expect to see slightly better results. Since this approach generally computes more calculations compared to the fixed-size, we would expect the timings to be worse than the previous approach but still better than the all-combinations one. We would also expect to see better partitions assignments. 
 
 For this method, we also have to define a threshold value that is used to decide when it is worth computing the combinations for a node and when it is not. For our tests, we used as a threshold value $THRESHOLD = 0.8$, which means that if a node accounts for at least 80\% of the average expected workload of a single child node, then we will peform its calculations. The value given to this variable is a ``safe'' one chosen mostly based on previous results and we don't expect it to be ideal. Still, it should be good enough to show the behavior of this approach.
 
@@ -810,15 +818,16 @@ For this method, we also have to define a threshold value that is used to decide
   \label{fig:dynamic}
 \end{figure}
 
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/dynamic.png}
-%   \caption{The performance of the variable-size Buckets method with different groups and items number}
-%   \label{fig:dynamic}
-% \end{figure}
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partition_difference_variable_all.png}
+  \caption{The difference in partitions assignment between all-combinations and variable-size}
+  \label{fig:variable-partitioning}
+\end{figure}
 
 \subsubsection{Results}
 Based on the results shown in Figure \ref{fig:dynamic}, this approach does not perform as well as expected: the performance is slightly better than the all-combinations approach, but not by far, and it is much slower than the fixed-bucket approach.
+Looking at Figure \ref{fig:variable-partitioning} we can also guess why: there is quite a big amount of nodes that inherited the partitions from their parents recursively, ending up with objects with the same group assignments as the root. 
 
 \begin{table}[!htb]
   \centering
@@ -899,7 +908,7 @@ We do not have a clear idea of how much the LRU will improve the results. It is 
 \end{figure}
 
 \subsubsection{Results}
-Figure \ref{fig:LRU_8} shows the experiments' results. The first impression is positive: in 100 repartitions the computation time decreased to $\frac{1}{10}$ of what it was initially, going below 10 seconds in the best cases. While 10 seconds is still a noticeable amount of time, with longer amounts of repartitions will boost the performance even more. 
+Figure \ref{fig:LRU_8} shows the experiments' results. The first impression is positive: in 100 repartitions the computation time decreased to one tenth of what it was initially, going below 10 seconds in the best cases. While 10 seconds is still a noticeable amount of time, with longer amounts of repartitions will boost the performance even more. 
 
 It is also interesting to notice that even from the first repartition, the time was around 70 seconds, definitely less than the 105 of the approach with LRU. This shows that even with just one repartition we have a noticeable amount of cache-hits. This most likely happens with close objects, that have a high chance of having similar workloads thanks to their high locality.
 
@@ -974,7 +983,7 @@ Note that the zipf skew used in the tests is a slightly modified one, which we c
 
 The four plots shown in Figure \ref{fig:skews} are the different skew distributions obtained using different $\alpha$ values. We have, respectively, top-left with $\alpha = 1$, top-right with $\alpha = 0.5$, bottom-left with $\alpha = 0$ and bottom-right with $\alpha = 1$ and smooth setting. The first three are quite self-explanatory, with the curve getting flatter and flatter the more we get close to zero. With the smooth curve it is important to notice that we are cutting the original curve in half, therefore the distribution will look slightly different compared to a non-smooth one with the same $\alpha$.
 
-The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90,95,99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups. We will not currently perform tests with more groups, for two reasons. First, we expect the behavior of the system with an increasing number of groups to be the same, just slower, and in these tests we are not particularly interested about the maximum performance of the system. Second, we have already tested the performance of the repartition with more groups in the previous chapter.
+The particular setups that we will test are four types of client behaviors, that we call local-skewed, global-skewed, constant and variable. For each of these, we will run tests with read/write ratios of 50, 90, 95, 99 (where 99 means 99\% of operations are going to be reads). For the tests we will have three groups. We will not currently perform tests with more groups, for two reasons. First, we expect the behavior of the system with an increasing number of groups to be the same, just slower, and in these tests we are not particularly interested about the maximum performance of the system. Second, we have already tested the performance of the repartition with more groups in the previous chapter.
 
 The tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos[cite] while it was been tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were fairly similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in table~\ref{tab:latencies}. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
 
@@ -1010,39 +1019,45 @@ Following this logic, the test we perform has three groups of clients in differe
 
 Because this situation is the ideal case for GeoPaxos, we expect the performance to grow quite steadily after a few repartitions. This is because the shifted loads allow to assign the different areas to the different groups quite easily, allowing us to perform all the single group operations with almost no latency involved in the communications.
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_tp.png}
-  \caption{ 50\% reads }
-  \label{fig:local50-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
+%   \caption{ local tests with 50, 90, 95 and 99 percent reads }
+%   \label{fig:local50-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:local10-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_tp.png}
+%   \caption{ local test with 90\% reads }
+%   \label{fig:local10-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:local5-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
+%   \caption{ local test with 95\% reads }
+%   \label{fig:local5-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:local1-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
+%   \caption{ local test with 99\% reads }
+%   \label{fig:local1-performance}
+% \end{figure}
 
-The plots regarding the tests with 90, 95 and 99 percent reads are pretty much as expected. The average throughput is slightly higher whenever we increase the amount of reads, since reads don't always require all the partitions to synchronize, allowing to perform multiple reads in parallel. The latencies follow a similar pattern, where the more reads we have, the lower the latencies are on average.
+The Figures \ref{fig:local50-performance} regarding the tests with 90, 95 and 99 percent reads are pretty much as expected. The average throughput is slightly higher whenever we increase the amount of reads, since reads don't always require all the partitions to synchronize, allowing to perform multiple reads in parallel. The latencies follow a similar pattern, where the more reads we have, the lower the latencies are on average.
 
 The unexpected results are with the test with 50\% reads, which surprisingly has both high throughput and many messages with low latencies. Upon further inspections, we noticed that this was due to the repartitions assigning nodes to different groups. For the nodes handling keys that are evenly shared between groups (for example, in Figure \ref{fig:local-skewed-loads}, we see this around keys 0, 38, 62 and 100) the repartitioning algorithm assigns those nodes to only one group, while in the tests with higher reads percentages these nodes are assigned all the groups (1, 2, 3). From the point of view of the algorithm, this makes sense: since in the first test we have 50\% reads, it is better to assign the nodes to only one group, to favor the write operations. Instead, in the tests with many reads, having these nodes assigned to multiple groups increases the performance with reads. This is why in the first test we have so many messages with close to zero latency.
 
@@ -1063,6 +1078,19 @@ Table \ref{tab:local-latencies-table} shows the mean and various percentiles reg
   \caption{Statistical data on the global-skewed experiments}\label{tab:local-latencies-table}
 \end{table}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local50_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local10_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
+  \caption{ local tests with 50, 90, 95 and 99 percent reads }
+  \label{fig:local50-performance}
+\end{figure}
 
 \section{Global-skewed}\label{sec:global-skewed}
 Another possible view on client behavior in geographically distributed environments is the opposite of the previous one. Instead of having ``local loads'' that depend on the geographic locations of the clients, we could instead have one global load that is shared among all the clients. Examples of objects that could lead to this behavior are viral news that could interest the whole world, or famous people that have fans from all across the globe.
@@ -1078,44 +1106,50 @@ For the test we have similar loads as before, but this time they are not shifted
 
 The results we expect to see is that the nodes will more or less have similar partitions, since the accesses that they receive from the clients are the similar.
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_tp.png}
-  \caption{ 50\% global }
-  \label{fig:global50-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
+%   \caption{ global tests with 50, 90, 95 and 99 percent reads }
+%   \label{fig:global50-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_tp.png}
-  \caption{ 90\% global }
-  \label{fig:global10-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_tp.png}
+%   \caption{ global test with 90\% reads }
+%   \label{fig:global10-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
-  \caption{ 95\% global }
-  \label{fig:global5-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
+%   \caption{ global test with 95\% reads }
+%   \label{fig:global5-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
-  \caption{ 99\% global }
-  \label{fig:global1-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
+%   \caption{ global test with 99\% reads }
+%   \label{fig:global1-performance}
+% \end{figure}
 
-The results of the global tests are as expected. The throughput are higher in the tests with more read operations. we don't see any improvements in throughput during the tests, because the nodes are by default assigned to all groups, and the loads of the clients are almost identical, which means that there is no real way to improve the partitioning. The latencies are on average worse than the tests with local skews, again as expected, since in those tests we were able to perform a partitioning that takes advantage of the locality.
+The results of the global tests (Figure \ref{fig:global50-performance}) are as expected. The throughput are higher in the tests with more read operations. we don't see any improvements in throughput during the tests, because the nodes are by default assigned to all groups, and the loads of the clients are almost identical, which means that there is no real way to improve the partitioning. The latencies are on average worse than the tests with local skews, again as expected, since in those tests we were able to perform a partitioning that takes advantage of the locality.
 
 Looking at the latencies there is an interesting stair-like shape, that gets less and less noticeable when increasing the reads. Those could be the plateaus given by the operations that require multiple groups to deliver the messages.
 
 Table \ref{tab:global-latencies-table} shows the mean and various percentiles regarding the timing of operations for the global-skewed experiments. Again, they are in line with our observations made on the previous plots.
-
+\vfill
 \begin{table}[!htb]
   \centering
   \begin{tabular}{l l l l l l l l}
@@ -1131,49 +1165,55 @@ Table \ref{tab:global-latencies-table} shows the mean and various percentiles re
   \caption{Statistical data on the global-skewed experiments}\label{tab:global-latencies-table}
 \end{table}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global50_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global10_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
+  \caption{ global tests with 50, 90, 95 and 99 percent reads }
+  \label{fig:global50-performance}
+\end{figure}
+
 \section{Constant}\label{sec:constant}
 A third possible load would be a test with a flat distribution, achievable with a skew of $\alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distribute the objects. For this case we don't expect a good performance, as probably most nodes will be assigned to the same partitions.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_constant.png}
-  \caption{ constant-skewed-loads }
+  \caption{ Client loads for the constant tests }
   \label{fig:constant-skewed-loads}
 \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:constant50-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_tp.png}
+%   \caption{ constant test with 90\% reads }
+%   \label{fig:constant10-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:constant10-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_tp.png}
+%   \caption{ constant test with 95\% reads }
+%   \label{fig:constant5-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:constant5-performance}
-\end{figure}
+% \begin{figure}[!htb]
+%   \centering
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_lat.png}
+%   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_tp.png}
+%   \caption{ constant test with 99\% reads }
+%   \label{fig:constant1-performance}
+% \end{figure}
 
-\begin{figure}[!htb]
-  \centering
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_lat.png}
-  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_tp.png}
-  \caption{ picture that shows client loads }
-  \label{fig:constant1-performance}
-\end{figure}
-
-The results are similar to the global-skewed, since in this case the clients have similar behaviors as well. The observations made for the global tests apply for the constant tests as well. Interestingly, in the 50\% read test, the plateaus in the latencies are even more noticeable, perhaps because there's less variation in the combinations of groups destinations.
+The results (Figure \ref{fig:constant50-performance}) are similar to the global-skewed, since in this case the clients have similar behaviors as well. The observations made for the global tests apply for the constant tests as well. Interestingly, in the 50\% read test, the plateaus in the latencies are even more noticeable, perhaps because there's less variation in the combinations of groups destinations.
 
 Table \ref{tab:constant-latencies-table} shows the mean and percentiles for the constant experiments.
 
@@ -1192,30 +1232,44 @@ Table \ref{tab:constant-latencies-table} shows the mean and percentiles for the 
   \caption{Statistical data on the constant experiments}\label{tab:constant-latencies-table}
 \end{table}
 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant50_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant10_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_tp.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_lat.png}
+  \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_tp.png}
+  \caption{ constant tests with 50, 90, 95 and 99 percent reads }
+  \label{fig:constant50-performance}
+\end{figure}
+\newpage
 \section{Variable}\label{sec:variable}
 This last test is slightly different, since this time we want to test if, and how quickly, the system adapts to a change in workloads. We will initially start with a local-skewed workload like in the first case, and after some time we will shift the clients once more, effectively changing the interest in the objects for all clients. What we expect to see is that after the workload change the performance will drop, and after some repartitions the system will slowly move onto the new partitioning that increases the performance with the new workload. The change in workload is shown in Figure \ref{fig:variable-loads}.
 
 The speed at which the system adapts to the new workload is highly dependant on the $\alpha$ variable used when updating the RW counters, which defines how quickly the RW counters are aging with every repartition. We use an $\alpha$ of $0.5$, as from our tests it looked like it was a fine compromise between adaptability and resiliance to unexpected behaviors. A slow adaptation to the new workload would be acceptable, since in our test we are using the most abrupt change possible, which is quite unlikely in a normal execution.
 
-Note that we performed this test only with the 50\% reads load, since what we want to see from this test is not related to the ratio of reads/writes, but just the behavior upon a change of client operations. The test is performed as follows: we start the system with the client loads as in the left image of Figure \ref{fig:variable-loads}. We perform a repartition after 1 minute, and then we repartition every 30 seconds. After 3 minutes and 30 seconds, when we expect the performance to be stable, we stop the clients, and start new ones with distributions as in the right image of Figure \ref{fig:variable-loads}. We then repeat the repartition after 1 minute and then 30 seconds, for at least a couple of minutes to see if the system recovers or not.
+Note that we performed this test only with the 50\% reads load, since what we want to see from this test is not related to the ratio of reads/writes, but just the behavior upon a change of client operations. The test is performed as follows: we start the system with the client loads as in the left image of Figure \ref{fig:variable-loads}. We perform a repartition after 1 minute, and then we repartition every 30 seconds. After 3 minutes and 30 seconds, when we expect the performance to be stable, we stop the clients, and start new ones with distributions as in the right image of Figure \ref{fig:variable-loads}. We then repeat the repartition after 1 minute and then 30 seconds, for at least a couple of minutes to see if the system recovers or not. 
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/clients_loads.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_variable.png}
-  \caption{ picture that shows client loads }
+  \caption{ Client loads for the variable test }
   \label{fig:variable-loads}
 \end{figure}
+The results, shown in Figure \ref{fig:variable50-performance}, are quite nice. The latency is nothing particularly different compared to the previous cases, as it shows a similar shape. The throughput instead is a positive result: in the right image of Figure \ref{fig:variable50-performance} we can see the green line that represents the performance with the initial clients, and the red line which represents the performance after we changed the client behavior. The green line behaves as usual, with noticeable increments in performance at the 90 and 120 seconds mark, which correspond to two repartitions. Once we change the clients, the performance drops, since the partitioning is not optimal for the new clients. After the second repartition with the new clients, at 280 seconds, we see that the performance goes back up, meaning that the system adapted to the new clients, and that the repartition correctly re-assigned the nodes based on the recent operations of the new clients.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/variable50_lat.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/variable50_tp.png}
-  \caption{ picture that shows client loads }
+  \caption{ variable test with 50\% reads }
   \label{fig:variable50-performance}
 \end{figure}
-
-The result is quite nice. The latency is nothing particularly different compared to the previous cases, as it shows a similar shape. The throughput instead is a positive result: in the right image of Figure \ref{fig:variable50-performance} we can see the green line that represents the performance with the initial clients, and the red line which represents the performance after we changed the client behavior. The green line behaves as usual, with noticeable increments in performance at the 90 and 120 seconds mark, which correspond to two repartitions. Once we change the clients, the performance drops, since the partitioning is not optimal for the new clients. After the second repartition with the new clients, at 280 seconds, we see that the performance goes back up, meaning that the system adapted to the new clients, and that the repartition correctly re-assigned the nodes based on the recent operations of the new clients.
 
 % \clearpage
 \section{GeoPaxos results evaluation}\label{sec:geopaxos-results-evaluation}
