@@ -7,6 +7,8 @@ import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
 
+plt.style.use('bmh')
+
 if len(sys.argv) < 4:
     print ("Usage:", sys.argv[0], "<data dir> <pattern> <lat|tp>")
     sys.exit(1)
@@ -64,8 +66,11 @@ if op == "tp":
     print ('#', srcdir, np.mean(a), min, max)
 
 elif op == "skew":
-    # lines = [int(line.rstrip('\n')) for line in open(srcdir)]
-    lines1 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
+    lines1 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_100000.txt")]
+    lines2 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_500000.txt")]
+    lines3 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_hot_8_1000000.txt")]
+    # lines1 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_all_assigns.txt")]
+    # lines2 = [line.rstrip('\n') for line in open("repartition-tests/tree_100000_8_hotgroups01_assigns.txt")]
     # for i in range():
     #     lines1.insert(0, lines1.pop(-1))
     # lines2 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha1smooth.txt")]
@@ -75,15 +80,15 @@ elif op == "skew":
     #     ("skew/skew-alpha1smooth.txt")]
     # for i in range(75):
     #     lines3.insert(0, lines3.pop(-1))
-    plt.xlabel('Key')
-    plt.ylabel('Frequency')
-    plt.plot(lines1)
-    # plt.plot(lines2, label='Group 2')
-    # plt.plot(lines3, label='Group 3')
+    plt.xlabel('Iteration')
+    plt.ylabel('Time(s)')
+    plt.plot(lines1, label='100\'000 items')
+    plt.plot(lines2, label='500\'000 items')
+    plt.plot(lines3, label='1\'000\'000 items')
     # plt.plot(lines)
     axes = plt.gca()
     # axes.set_xlim([xmin,xmax])
-    axes.set_ylim([0,10000])
+    # axes.set_ylim([0,10000])
     plt.legend()
     plt.tight_layout()
     plt.show()
