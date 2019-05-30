@@ -67,9 +67,9 @@ if op == "tp":
     print ('#', srcdir, np.mean(a), min, max)
 
 elif op == "skew":
-    # lines1 = [int(line.rstrip('\n'))/1000 for line in open("./local_50")]
-    # lines2 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_8_500000.txt")]
-    # lines3 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_8_1000000.txt")]
+    lines1 = [int(line.rstrip('\n'))/1000 for line in open("skew/LRU_8_1000000.txt")]
+    lines2 = [int(line.rstrip('\n'))/1000 for line in open("skew/tree_1000000_8_lru_all_constant.txt")]
+    lines3 = [int(line.rstrip('\n'))/1000 for line in open("skew/tree_1000000_8_lru_all_skew1.txt")]
     # lines1 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
     # lines2 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha05.txt")]
     # lines3 = [int(line.rstrip('\n')) for line in open("skew/skew-alpha0.txt")]
@@ -86,16 +86,16 @@ elif op == "skew":
     #     ("skew/skew-alpha0.txt")]
     # for i in range(98):
     #     lines3.insert(0, lines3.pop(-1))
-    plt.xlabel('Key')
-    plt.ylabel('Frequency')
-    plt.plot(lines1, label='Group 1')
-    plt.plot(lines2, label='Group 2')
-    plt.plot(lines3, label='Group 3')
+    plt.xlabel('Iteration')
+    plt.ylabel('Time(s)')
+    plt.plot(lines3, label=r'\alpha=1.0')
+    plt.plot(lines1, label=r'\alpha=0.5')
+    plt.plot(lines2, label=r'\alpha=0.0')
     # plt.plot(lines4)
     # plt.plot(lines)
     axes = plt.gca()
     # axes.set_xlim([xmin,xmax])
-    axes.set_ylim([0,5000])
+    # axes.set_ylim([0,10])
     plt.legend()
     plt.tight_layout()
     plt.show()

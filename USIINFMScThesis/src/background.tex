@@ -4,15 +4,15 @@ In this chapter, we will go over some of the fundamentals of distributed data st
 \section{Distributed data structures}\label{sec:distributed-data-structures}
 As we mentioned in the introduction, distributed and highly available services are becoming more and more popular every year. In a similar fashion, the importance of distributed data structures has seen a analogous growth, further pressured by the increase of data that is generated and stored every day. 
 
-Some of the biggest companies have developed their own solutions to handle distributed data (e.g. Amazon's Dynamo, Microsoft's Azure, Google's BigTable) while others used some pre-existing solutions, such as Coudchbase used by LinkedIn PayPal and Ebay, and Druid used by Netflix and Yahoo.
+Some of the biggest companies have developed their own solutions to handle distributed data (e.g. Amazon's Dynamo\citep{dynamo}, Microsoft's Azure\citep{azure}, Google's BigTable\citep{bigtable}) while others used some pre-existing solutions, such as Coudchbase\citep{couchbase} used by LinkedIn PayPal and Ebay, and Druid\citep{druid} used by Netflix and Yahoo. 
 
 Of these, most implementations are based on Distributed Hash Tables (DHT), which are key-value stores made for distributed environments.
 The characteristics of DHTs are similar to those of normal Hash Tables, but with extra features that make them usable in distributed environments, such as resiliance to failure, scalability and efficient data retrieval.
 
-The drawbacks of Hash Tables are still present, though: operations on range of values are very inefficient, making the retrieval of chunks of data quite slow. For this reason, solutions with distributed trees are also used (Baton, Pgrid, BigTable, Galaxy). These solve the shortcomings of the range operations, but can be harder to maintain in a distributed environment.
+The drawbacks of Hash Tables are still present, though: operations on range of values are very inefficient, making the retrieval of chunks of data quite slow. For this reason, solutions with distributed trees are also used (Baton\citep{baton}, BigTable\citep{bigtable}, Galaxy\citep{galaxy}). These solve the shortcomings of the range operations, but can be harder to maintain in a distributed environment. 
 
 \section{GeoPaxos}\label{sec:GeoPaxos}
-GeoPaxos[cite] is a protocol that achieves high performance of State Machine Replication for strongly consistent systems that are geographically distributed.
+GeoPaxos\citep{geopaxos} is a protocol that achieves high performance of State Machine Replication for strongly consistent systems that are geographically distributed.
 
 Figure \ref{fig:datacenters} shows an example of a GeoPaxos deployment across three regions. There are three objects, X, Y and Z, which are replicated to all replicas. Each object also has a preferred site, which means that if there is a choice of which site should handle the ordering of the operations, the preferred site is used. We can also see how GeoPaxos allows a certain amount of redundancy both of replicas and groups, which makes it more resiliant to failures.
 
@@ -20,7 +20,7 @@ Figure \ref{fig:datacenters} shows an example of a GeoPaxos deployment across th
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/datacenters.png}
 
-  \caption{A possible deployment of GeoPaxos[cite]} 
+  \caption{A possible deployment of GeoPaxos\citep{geopaxos}} 
   \label{fig:datacenters}
 \end{figure}
 
@@ -75,7 +75,7 @@ Figure \ref{fig:partial-ordering} shows an example of commutative and non-commut
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/partial-ordering.png}
 
-  \caption{ Examples of commutative and non-commutative operations [cite] }
+  \caption{ Examples of commutative and non-commutative operations \citep{geopaxos} }
   \label{fig:partial-ordering}
 \end{figure}
 

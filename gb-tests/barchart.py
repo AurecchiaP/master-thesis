@@ -8,9 +8,9 @@ plt.style.use('bmh')
 n_groups = 3
 
 #all
-# groups3 = (47, 255, 508)
-# groups4 = (166, 760, 1556)
-# groups8 = (10628, 59162, 105132)
+groups3 = (47, 255, 508)
+groups4 = (166, 760, 1556)
+groups8 = (10628, 59162, 105132)
 
 #dynamic
 # groups3 = (.043, .227, .492)
@@ -23,9 +23,9 @@ n_groups = 3
 # groups8 = (.187, 1.010, 2.002)
 
 # hot groups
-groups3 = (0.042, 0.213, 0.403)
-groups4 = (0.106, 0.520, 1.110)
-groups8 = (4.198, 20.581, 42.912)
+# groups3 = (0.042, 0.213, 0.403)
+# groups4 = (0.106, 0.520, 1.110)
+# groups8 = (4.198, 20.581, 42.912)
 
 # create plot
 fig, ax = plt.subplots()

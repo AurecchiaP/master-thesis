@@ -1,12 +1,12 @@
 \chapter{Introduction}\label{sec:introduction}
-In recent years, the number of distributed systems that are used privately by companies or that are offered as services to the public has been growing quickly. This brought the need for new and better ways to tackle the problems that distributed systems have to face, such as availability, consistency and latency. GeoPaxos is a particularly valid solution for geo-distributed systems, but by default it works on a per-object granularity. Building an efficient distributed data structure on top of GeoPaxos would bring the performance of GeoPaxos closer to the needs of more distributed applications.
+In recent years, the number of distributed systems that are used privately by companies or that are offered as services to the public has been growing quickly. This brought the need for new and better ways to tackle the problems that distributed systems have to face, such as availability, consistency and latency. GeoPaxos\citep{geopaxos} is a particularly valid solution for geo-distributed systems, but by default it works on a per-object granularity. Building an efficient distributed data structure on top of GeoPaxos would bring the performance of GeoPaxos closer to the needs of more distributed applications.
 
 \section{Motivation}\label{sec:motivation}
 For a distributed system, we want to have availability, consistency and low latency, but usually one comes at the cost of the others. Having multiple replicas of the system is a solution for availability, but this still comes with high latency for the clients; placing the replicas close to the clients does not solve the issue, as the replicas will still have to communicate to ensure a consistent state, therefore still with high latency.
 
 If the system shows locality, meaning that different replicas will face requests on different objects, a common solution for this problem is to shard or partition the state, so that different replicas have to handle only part of the state. This allows to place the replicas that handle specific partitions closer to the clients that access those partitions the most.
 
-An alternative solution, as it is done by GeoPaxos[cite], is to fully replicate the data in all replicas and partition the responsibility of the ordering of operations to the groups in the different regions.
+An alternative solution, as it is done by GeoPaxos\citep{geopaxos}, is to fully replicate the data in all replicas and partition the responsibility of the ordering of operations to the groups in the different regions.
 
 A distributed structure such as a B+tree would be particularly interesting, since it has many characteristics that are suitable for databases. The problem with this is that, as the state is partitioned, if a client performs operation on multiple partitions, the replicas will have to communicate to order the requests, while still ensuring the consistency of the state. Also, if the locality of the operations changes over time, there will be the need to repartition the state, which involves the data of the whole state. We therefore have the need to provide a way to perform a repartition on a distributed B+tree that is deterministic and as close to optimal and efficient as possible.
 
@@ -18,7 +18,7 @@ The process to find the optimized partitions is called repartition. We want to d
 \section{The structure of this thesis}\label{the-structure-of-this-thesis}
 The remaining chapters of this report will be structured as follows.
 
-First there will be a brief overview of the background needed to better understand the core part of the report. The background will go over an introduction of distributed data structures and their inherent challenges. We will then introduce GeoPaxos[cite], an improved version of Paxos particularly suited for geo-distributed systems. 
+First there will be a brief overview of the background needed to better understand the core part of the report. The background will go over an introduction of distributed data structures and their inherent challenges. We will then introduce GeoPaxos\citep{geopaxos}, an improved version of Paxos particularly suited for geo-distributed systems. 
 
 Next, we will discuss the usage of a B+tree with GeoPaxos, including the advantages and the challenges that come with it. Finally we will discuss the repartition problem of a distributed B+tree, which is the core subject of this report. This part will include an introduction to the problem, followed by a list of attempted solutions for improving the repartition process. The chapter will then conclude with a suite of tests, both regarding the performance of the solutions presented and the execution of GeoPaxos with the different repartition algorithms.
 
