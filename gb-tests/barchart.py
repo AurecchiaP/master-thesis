@@ -8,9 +8,9 @@ plt.style.use('bmh')
 n_groups = 3
 
 #all
-groups3 = (47, 255, 508)
-groups4 = (166, 760, 1556)
-groups8 = (10628, 59162, 105132)
+groups3 = (.047, .255, .508)
+groups4 = (.166, .760, 1.556)
+groups8 = (10.628, 59.162, 105.132)
 
 #dynamic
 # groups3 = (.043, .227, .492)
