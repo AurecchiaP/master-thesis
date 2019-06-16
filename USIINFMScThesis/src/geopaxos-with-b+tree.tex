@@ -1006,7 +1006,7 @@ Note that the zipf skew used in the tests is a slightly modified type of skew, w
 
 The four plots shown in Figure \ref{fig:skews} are the different skew distributions obtained using different $\alpha$ values. We have top-left with $\alpha = 1$, top-right with $\alpha = 0.5$, bottom-left with $\alpha = 0$ and bottom-right with $\alpha = 1$ and smooth setting. The first three are quite self-explanatory, with the curve getting flatter and flatter the more we get close to zero. With the smooth curve it is important to notice that we are cutting the original curve in half, therefore the distribution will look slightly different compared to a non-smooth one with the same $\alpha$.
 \\\\
-The particular setups that we will test are four types of client behaviors, that we call \textbf{\emph{local-skewed}}, \textbf{\emph{global-skewed}}, \textbf{\emph{constant}} and \textbf{\emph{variable}}. For each of these, we will run tests with read/write ratios of 50, 90, 95, 99 (where 99 means 99\% of operations are  reads). For the tests we will have three groups. We will not perform tests with more groups, for two reasons. First, we expect the behavior of the system with an increasing number of groups to be similar, just slower, and in these tests we are not particularly interested in the maximum performance of the system. Second, we have already tested the performance of the repartition with more groups in the previous chapter.
+The particular setups that we will test are four types of client behaviors, that we call \textbf{\emph{local-skewed}}, \textbf{\emph{global-skewed}}, \textbf{\emph{uniform}} and \textbf{\emph{variable}}. For each of these, we will run tests with read/write ratios of 50, 90, 95, 99 (where 99 means 99\% of operations are  reads). For the tests we will have three groups. We will not perform tests with more groups, for two reasons. First, we expect the behavior of the system with an increasing number of groups to be similar, just slower, and in these tests we are not particularly interested in the maximum performance of the system. Second, we have already tested the performance of the repartition with more groups in the previous chapter.
 \\\\
 The tests will be run on a local cluster of machines, but with with simulated latencies between the replicas. These latencies were measured during the testing of GeoPaxos while it was tested on Amazon EC2 servers, and it was seen that the results of the real geographically distributed machines on EC2 nodes and the results with the simulated latencies were fairly similar. The simulated locations for the datacenters are in Tokyo(JP), California(CA) and Ireland(EU), with calculated latencies between the regions in Table~\ref{tab:latencies}. For the Paxos entities, the datacenters in each region contain 3 acceptors and one replica co-located with one of the acceptors. The latencies measured inside a datacenter were negligible, in the order of 1ms.
 
@@ -1119,7 +1119,7 @@ Table \ref{tab:local-latencies-table} shows the mean and various percentiles reg
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local5_tp.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_lat.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/local1_tp.png}
-  \caption{ CDF of latency on the left and throughput versus time on the right }
+  \caption{ CDF of latency on the left, throughput versus time on the right }
   \label{fig:local50-performance}
 \end{figure}
 
@@ -1206,18 +1206,18 @@ Table \ref{tab:global-latencies-table} shows the mean and various percentiles re
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global5_tp.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_lat.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/global1_tp.png}
-  \caption{ CDF of latency on the left and throughput versus time on the right }
+  \caption{ CDF of latency on the left, throughput versus time on the right }
   \label{fig:global50-performance}
 \end{figure}
 
-\section{Constant}\label{sec:constant}
+\section{Uniform}\label{sec:uniform}
 A third possible load would be a test with a flat distribution, achievable with a skew of $\alpha = 0$. This test would be a worst case scenario, since there are no different loads from the clients that can be exploited by the system to better distribute the objects. For this case we don't expect good performance, as probably most nodes will be assigned to the same partitions.
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{img/clients_loads_constant.png}
-  \caption{ Distribution of client operations for the constant tests }
-  \label{fig:constant-skewed-loads}
+  \caption{ Distribution of client operations for the uniform tests }
+  \label{fig:uniform-skewed-loads}
 \end{figure}
 
 % \begin{figure}[!htb]
@@ -1244,9 +1244,9 @@ A third possible load would be a test with a flat distribution, achievable with 
 %   \label{fig:constant1-performance}
 % \end{figure}
 
-The results (Figure \ref{fig:constant50-performance}) are similar to the global-skewed, since in this case the clients have similar behavior as well. The observations made for the global tests apply to the constant tests as well. Interestingly, in the 50\% read test, the plateaus in the latencies are even more noticeable, perhaps because there's less variation in the combinations of group destinations.
+The results (Figure \ref{fig:uniform50-performance}) are similar to the global-skewed, since in this case the clients have similar behavior as well. The observations made for the global tests apply to the uniform tests as well. Interestingly, in the 50\% read test, the plateaus in the latencies are even more noticeable, perhaps because there's less variation in the combinations of group destinations.
 
-Table \ref{tab:constant-latencies-table} shows the mean and percentiles for the constant experiments.
+Table \ref{tab:uniform-latencies-table} shows the mean and percentiles for the uniform experiments.
 
 \begin{table}[!htb]
   \centering
@@ -1260,7 +1260,7 @@ Table \ref{tab:constant-latencies-table} shows the mean and percentiles for the 
     \textbf{99\% reads} & 104.1 & 1.074 & 2.007 & 3.208 & 212.4 & 412.8 & 778.4 \\
     \hline
   \end{tabular}
-  \caption{Mean latency and percentiles regarding the constant experiments}\label{tab:constant-latencies-table}
+  \caption{Mean latency and percentiles regarding the uniform experiments}\label{tab:uniform-latencies-table}
 \end{table}
 
 
@@ -1274,8 +1274,8 @@ Table \ref{tab:constant-latencies-table} shows the mean and percentiles for the 
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant5_tp.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_lat.png}
   \includegraphics[width=0.49\textwidth,height=\textheight,keepaspectratio]{img/constant1_tp.png}
-  \caption{ CDF of latency on the left and throughput versus time on the right }
-  \label{fig:constant50-performance}
+  \caption{ CDF of latency on the left, throughput versus time on the right }
+  \label{fig:uniform50-performance}
 \end{figure}
 \newpage
 \section{Variable}\label{sec:variable}
@@ -1313,7 +1313,7 @@ As expected, in general the tests with more reads than writes show better perfor
 One interesting exception happened in the local-skewed test, where the different ratio of reads and writes made it so that the nodes where partitioned differently, which ended up increasing the throughput by quite a noticeable margin. This is interesting because we were not expecting this to happen, but on further analyis it made sense that such a case could have happened.
 \\\\
 % \subsubsection{Resiliance}
-Another interesting result is that the constant and global-skewed tests have their partitions and throughput almost costant troughout all the tests. What could have happened instead was that because of an uneven period of operations, one region could have monopolized the system, ending up with the repartitioning favoring this one region with an avalanche effect. Fortunately this did not happen, which means that the repartitioning is not too susceptible to such events.
+Another interesting result is that the uniform and global-skewed tests have their partitions and throughput almost costant troughout all the tests. What could have happened instead was that because of an uneven period of operations, one region could have monopolized the system, ending up with the repartitioning favoring this one region with an avalanche effect. Fortunately this did not happen, which means that the repartitioning is not too susceptible to such events.
 \\\\
 % \subsubsection{Plateaus}
 Regarding the graphs of the latencies, we have plateaus which are particularly noticeable in the tests with few read operations. These can almost certainly be explained by the importance of multi-group operations. In the tests with 50\% writes, we have many occurrences where a message has to be ordered by a set of groups, which on average will have a latency cost that is highly dependant on the geographic location of the groups, and therefore the messages ordered by the same set of groups will have very similar latencies. Therefore, we will have that these operations are grouped together, ending up with the stair-like shape of the latency graphs. 
