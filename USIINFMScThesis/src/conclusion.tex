@@ -11,7 +11,7 @@ The results of the first tests were quite interesting, with some methods perform
 
 The tests with GeoPaxos were in line with our expectations, without any particularly big surprise. The chosen repartition algorithm (hot groups with LRU caching) did not appear to be a noticeable bottleneck at all, and the repartitions were able to improve the performance of GeoPaxos communications in the tests with advantageous clients behavior.
 
-In conclusion, there we definitely saw some viable methods to approach the repartition problem of distributed trees. The most interesting ones we found are the idea to cache repartition results and to discard the group combinations that are unlikely to matter. Putting these two approaches together we were able to only affect the repartition quality by negligible amounts, while drastically improve the efficiency of the repartition process.
+In conclusion, we definitely saw some viable methods to approach the repartition problem of distributed trees. The most interesting ones we found are the idea to cache repartition results and to discard the group combinations that are unlikely to matter. Putting these two approaches together we were able to only affect the repartition quality by negligible amounts, while drastically improve the efficiency of the repartition process.
 
 \section{Future work}\label{sec:future-work}
 Regarding what could be done in the future, there are various aspects that could be improved. 
@@ -20,6 +20,6 @@ One direction that could be interesting to follow is about implementing a more d
 
 Another possibility would be to attempt other completely different optimization approaches. In this report we presented a handful of ways to approximate and hence speed up the repartitions, usually based on some assumptions and heuristics. It is definitely possible to come up with alternative solutions, maybe based on different assumptions on the system.
 
-Improving on the methods presented in this report is definitely another possible track as well. This could be done in the way of actually changing and improving the concepts of the methods, or in further researching the optimal parameters that are necessary for the usage of some methods, such as optimizing the values of the treshold parameters.
+Improving on the methods presented in this report is another possible track as well. This could be done in the way of actually changing and improving the concepts of the methods, or in further researching the optimal parameters that are necessary for the usage of some methods, such as optimizing the values of the treshold parameters.
 
 

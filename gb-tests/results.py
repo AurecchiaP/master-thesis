@@ -58,6 +58,8 @@ if op == "tp":
         plt.plot(grouped)
         # plt.plot(grouped2)
         # plt.legend()
+        axes = plt.gca()
+        axes.set_ylim([0,4500])
         plt.tight_layout()
         plt.show()
 
