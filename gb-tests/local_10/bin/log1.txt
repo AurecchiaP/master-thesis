@@ -1,0 +1,60 @@
+[32mINFO:  geopaxos.c:425:produce(): Connecting to node 1 in group 0...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 1...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 2...
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m0 msgs/sec, 0/0 retries, message size 0
+d[0]=0 d[1]=0 d[2]=0 d[3]=0 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/0 retries, message size 0
+[32mINFO: gbtree-replica.cc:124:ondeliver(): OP 'INSERT 338073': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:126:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): OP 'INSERT 333338': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:126:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): OP 'INSERT 341282': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:126:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): OP 'INSERT 333342': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:126:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 2[0m
+[32mINFO: gbtree-replica.cc:124:ondeliver(): OP 'INSERT 365398': Error executing operation: destination partitions don't match expected ones![0m
+[32mINFO: gbtree-replica.cc:126:ondeliver(): ...received destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 0[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 1[0m
+[32mINFO: gbtree-replica.cc:129:ondeliver(): ...expected destination = 2[0m
+13 msgs/sec, 5/68 retries, message size 40
+28 msgs/sec, 5/210 retries, message size 40
+29 msgs/sec, 5/356 retries, message size 104
+30 msgs/sec, 5/506 retries, message size 40
+29 msgs/sec, 5/652 retries, message size 104

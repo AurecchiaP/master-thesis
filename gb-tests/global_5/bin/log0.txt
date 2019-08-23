@@ -1,0 +1,166 @@
+[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 0...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 1...
+[0m[32mINFO:  geopaxos.c:425:produce(): Connecting to node 0 in group 2...
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 1...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 0...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m[32mINFO:  geopaxos.c:395:on_connect(): Connected to group 2...
+
+[0m0 msgs/sec, 0/0 retries, message size 0
+d[0]=0 d[1]=0 d[2]=0 d[3]=0 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/0 retries, message size 0
+30 msgs/sec, 0/153 retries, message size 40
+33 msgs/sec, 0/318 retries, message size 40
+32 msgs/sec, 0/480 retries, message size 40
+32 msgs/sec, 0/640 retries, message size 40
+6 msgs/sec, 0/671 retries, message size 104
+0 msgs/sec, 0/671 retries, message size 104
+24 msgs/sec, 0/792 retries, message size 40
+27 msgs/sec, 0/928 retries, message size 40
+28 msgs/sec, 0/1068 retries, message size 104
+d[0]=0 d[1]=528 d[2]=0 d[3]=540 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+28 msgs/sec, 0/1209 retries, message size 40
+28 msgs/sec, 0/1351 retries, message size 104
+29 msgs/sec, 0/1497 retries, message size 40
+30 msgs/sec, 0/1649 retries, message size 40
+29 msgs/sec, 0/1797 retries, message size 104
+30 msgs/sec, 0/1947 retries, message size 40
+27 msgs/sec, 0/2084 retries, message size 40
+29 msgs/sec, 0/2231 retries, message size 104
+15 msgs/sec, 0/2310 retries, message size 104
+0 msgs/sec, 0/2310 retries, message size 104
+d[0]=0 d[1]=1137 d[2]=0 d[3]=1173 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/2310 retries, message size 104
+27 msgs/sec, 0/2447 retries, message size 104
+38 msgs/sec, 0/2638 retries, message size 40
+41 msgs/sec, 0/2846 retries, message size 104
+34 msgs/sec, 0/3018 retries, message size 104
+37 msgs/sec, 0/3204 retries, message size 40
+42 msgs/sec, 0/3417 retries, message size 40
+42 msgs/sec, 0/3631 retries, message size 104
+40 msgs/sec, 0/3835 retries, message size 40
+41 msgs/sec, 0/4040 retries, message size 40
+d[0]=0 d[1]=1998 d[2]=0 d[3]=2042 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+36 msgs/sec, 0/4224 retries, message size 104
+44 msgs/sec, 0/4445 retries, message size 40
+41 msgs/sec, 0/4651 retries, message size 40
+38 msgs/sec, 0/4843 retries, message size 40
+39 msgs/sec, 0/5041 retries, message size 40
+44 msgs/sec, 0/5264 retries, message size 104
+38 msgs/sec, 0/5458 retries, message size 104
+37 msgs/sec, 0/5643 retries, message size 104
+36 msgs/sec, 0/5823 retries, message size 40
+36 msgs/sec, 0/6007 retries, message size 40
+d[0]=0 d[1]=2973 d[2]=0 d[3]=3034 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+40 msgs/sec, 0/6210 retries, message size 40
+39 msgs/sec, 0/6408 retries, message size 40
+45 msgs/sec, 0/6634 retries, message size 40
+38 msgs/sec, 0/6825 retries, message size 40
+44 msgs/sec, 0/7045 retries, message size 104
+33 msgs/sec, 0/7213 retries, message size 104
+44 msgs/sec, 0/7434 retries, message size 40
+40 msgs/sec, 0/7638 retries, message size 40
+41 msgs/sec, 0/7847 retries, message size 40
+42 msgs/sec, 0/8061 retries, message size 40
+d[0]=0 d[1]=4031 d[2]=0 d[3]=4030 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+40 msgs/sec, 0/8262 retries, message size 40
+40 msgs/sec, 0/8466 retries, message size 104
+30 msgs/sec, 0/8617 retries, message size 104
+0 msgs/sec, 0/8617 retries, message size 104
+0 msgs/sec, 0/8617 retries, message size 104
+10 msgs/sec, 0/8667 retries, message size 40
+27 msgs/sec, 0/8806 retries, message size 40
+29 msgs/sec, 0/8955 retries, message size 40
+28 msgs/sec, 0/9096 retries, message size 40
+30 msgs/sec, 0/9249 retries, message size 40
+d[0]=0 d[1]=4623 d[2]=0 d[3]=4626 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+27 msgs/sec, 0/9388 retries, message size 40
+28 msgs/sec, 0/9529 retries, message size 40
+30 msgs/sec, 0/9680 retries, message size 40
+28 msgs/sec, 0/9822 retries, message size 40
+28 msgs/sec, 0/9963 retries, message size 40
+27 msgs/sec, 0/10101 retries, message size 40
+28 msgs/sec, 0/10243 retries, message size 40
+29 msgs/sec, 0/10389 retries, message size 40
+28 msgs/sec, 0/10529 retries, message size 104
+30 msgs/sec, 0/10681 retries, message size 40
+d[0]=0 d[1]=5316 d[2]=0 d[3]=5365 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+27 msgs/sec, 0/10817 retries, message size 40
+28 msgs/sec, 0/10961 retries, message size 40
+27 msgs/sec, 0/11097 retries, message size 40
+29 msgs/sec, 0/11243 retries, message size 40
+28 msgs/sec, 0/11386 retries, message size 40
+31 msgs/sec, 0/11544 retries, message size 40
+28 msgs/sec, 0/11685 retries, message size 40
+28 msgs/sec, 0/11828 retries, message size 104
+30 msgs/sec, 0/11978 retries, message size 40
+28 msgs/sec, 0/12119 retries, message size 40
+d[0]=0 d[1]=6030 d[2]=0 d[3]=6089 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+30 msgs/sec, 0/12270 retries, message size 40
+28 msgs/sec, 0/12414 retries, message size 104
+1 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+d[0]=0 d[1]=6180 d[2]=0 d[3]=6240 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+d[0]=0 d[1]=6180 d[2]=0 d[3]=6240 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+d[0]=0 d[1]=6180 d[2]=0 d[3]=6240 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+0 msgs/sec, 0/12420 retries, message size 104
+15 msgs/sec, 0/12497 retries, message size 104
+39 msgs/sec, 0/12695 retries, message size 104
+39 msgs/sec, 0/12893 retries, message size 104
+d[0]=0 d[1]=6408 d[2]=0 d[3]=6485 d[4]=0 d[5]=0 d[6]=0 d[7]=0 d[8]=0 d[9]=0 
+41 msgs/sec, 0/13100 retries, message size 40
+39 msgs/sec, 0/13296 retries, message size 40
+35 msgs/sec, 0/13475 retries, message size 40
+42 msgs/sec, 0/13688 retries, message size 40
+36 msgs/sec, 0/13872 retries, message size 40

@@ -1,6 +1,4 @@
 .DS_Store
 coelho-doc/*
-da\ slides/*
-ds\ slides/*
 *.pdf
-gb-tests/*
+# gb-tests/*
